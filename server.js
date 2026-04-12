@@ -5,28 +5,23 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIO(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
-});
+const io = socketIO(server);
 
-// Хранилище сообщений
+// Хранилище данных
 let messages = [];
 let users = new Map();
 
-// Раздаём статические файлы
-app.use(express.static('public'));
+// Раздаём статические файлы из корня
+app.use(express.static(__dirname));
 
-// Главная страница
+// Главная страница — ищем index.html в корне
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// WebSocket соединения
+// WebSocket
 io.on('connection', (socket) => {
-    console.log('Новый пользователь:', socket.id);
+    console.log('Пользователь подключился:', socket.id);
     
     // Отправляем историю
     socket.emit('chat history', messages);
@@ -35,23 +30,21 @@ io.on('connection', (socket) => {
     const userList = Array.from(users.values());
     socket.emit('users list', userList);
     
-    // Пользователь заходит
+    // Регистрация
     socket.on('user join', (userName) => {
         const user = {
             id: socket.id,
             name: userName,
-            online: true,
-            joinedAt: Date.now()
+            online: true
         };
         users.set(socket.id, user);
         
         io.emit('users list', Array.from(users.values()));
         
-        // Системное сообщение
         const systemMsg = {
             id: Date.now(),
             userId: 'system',
-            userName: '📢 Система',
+            userName: 'Система',
             text: `${userName} присоединился к чату`,
             timestamp: Date.now(),
             isSystem: true
@@ -81,18 +74,6 @@ io.on('connection', (socket) => {
         io.emit('new message', message);
     });
     
-    // Печатает
-    socket.on('typing', (isTyping) => {
-        const user = users.get(socket.id);
-        if (user) {
-            socket.broadcast.emit('user typing', {
-                userId: socket.id,
-                name: user.name,
-                isTyping: isTyping
-            });
-        }
-    });
-    
     // Отключение
     socket.on('disconnect', () => {
         const user = users.get(socket.id);
@@ -103,7 +84,7 @@ io.on('connection', (socket) => {
             const systemMsg = {
                 id: Date.now(),
                 userId: 'system',
-                userName: '📢 Система',
+                userName: 'Система',
                 text: `${user.name} покинул чат`,
                 timestamp: Date.now(),
                 isSystem: true
