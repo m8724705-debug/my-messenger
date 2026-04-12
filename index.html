@@ -2,36 +2,43 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#075e54">
     <title>✨ Мессенджер | Чат с друзьями</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background: #0e1621;
             height: 100vh;
             overflow: hidden;
+            position: fixed;
+            width: 100%;
         }
 
         /* Основной контейнер */
         .app {
             display: flex;
             height: 100vh;
+            width: 100%;
         }
 
         /* Боковая панель */
         .sidebar {
-            width: 320px;
+            width: 280px;
             background: #17212b;
             border-right: 1px solid #242f3d;
             display: flex;
             flex-direction: column;
-            transition: transform 0.3s;
+            transition: transform 0.3s ease;
+            z-index: 1000;
         }
 
         @media (max-width: 768px) {
@@ -40,36 +47,44 @@
                 left: 0;
                 top: 0;
                 height: 100%;
-                z-index: 1000;
                 transform: translateX(-100%);
+                width: 280px;
             }
             .sidebar.open {
                 transform: translateX(0);
-            }
-            .sidebar-toggle {
-                display: block;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.3);
             }
         }
 
-        .sidebar-toggle {
+        /* Кнопка меню для телефона */
+        .menu-btn {
             display: none;
             position: fixed;
-            left: 10px;
-            top: 10px;
+            left: 12px;
+            top: 12px;
             z-index: 1001;
             background: #2b5278;
             color: white;
             border: none;
-            width: 40px;
-            height: 40px;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
-            font-size: 20px;
+            font-size: 24px;
             cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        @media (max-width: 768px) {
+            .menu-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
         }
 
         /* Шапка боковой панели */
         .sidebar-header {
-            padding: 20px;
+            padding: 20px 16px;
             background: #17212b;
             border-bottom: 1px solid #242f3d;
         }
@@ -78,7 +93,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            margin-bottom: 15px;
+            margin-bottom: 16px;
         }
 
         .avatar {
@@ -90,12 +105,6 @@
             align-items: center;
             justify-content: center;
             font-size: 24px;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-
-        .avatar:hover {
-            transform: scale(1.05);
         }
 
         .user-info {
@@ -123,7 +132,7 @@
         }
 
         /* Кнопки */
-        .new-chat-btn, .new-group-btn, .settings-btn {
+        .new-chat-btn, .new-group-btn, .join-group-btn {
             width: 100%;
             padding: 12px;
             background: #2b5278;
@@ -133,40 +142,39 @@
             cursor: pointer;
             font-size: 14px;
             margin-bottom: 8px;
-            transition: background 0.2s;
+            transition: opacity 0.2s;
         }
 
         .new-group-btn {
             background: #2aab6e;
         }
 
-        .settings-btn {
+        .join-group-btn {
             background: #242f3d;
-            margin-bottom: 0;
         }
 
-        .new-chat-btn:hover, .new-group-btn:hover, .settings-btn:hover {
-            opacity: 0.9;
+        .new-chat-btn:active, .new-group-btn:active, .join-group-btn:active {
+            opacity: 0.7;
         }
 
         /* Список чатов */
         .chats-list {
             flex: 1;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .chat-item {
-            padding: 15px 20px;
+            padding: 14px 16px;
             display: flex;
             align-items: center;
             gap: 12px;
             cursor: pointer;
             transition: background 0.2s;
             border-bottom: 1px solid #242f3d;
-            position: relative;
         }
 
-        .chat-item:hover {
+        .chat-item:active {
             background: #1e2a36;
         }
 
@@ -183,18 +191,7 @@
             align-items: center;
             justify-content: center;
             font-size: 24px;
-            position: relative;
-        }
-
-        .online-indicator {
-            position: absolute;
-            bottom: 2px;
-            right: 2px;
-            width: 12px;
-            height: 12px;
-            background: #2aab6e;
-            border-radius: 50%;
-            border: 2px solid #17212b;
+            flex-shrink: 0;
         }
 
         .chat-info {
@@ -208,6 +205,7 @@
             margin-bottom: 4px;
             display: flex;
             justify-content: space-between;
+            align-items: center;
         }
 
         .chat-last-msg {
@@ -239,10 +237,11 @@
             display: flex;
             flex-direction: column;
             background: #0e1621;
+            width: 100%;
         }
 
         .chat-header {
-            padding: 15px 20px;
+            padding: 12px 16px;
             background: #17212b;
             border-bottom: 1px solid #242f3d;
             display: flex;
@@ -253,8 +252,8 @@
         .chat-header-info {
             display: flex;
             align-items: center;
-            gap: 12px;
-            cursor: pointer;
+            gap: 10px;
+            flex: 1;
         }
 
         .chat-header-avatar {
@@ -266,16 +265,17 @@
             align-items: center;
             justify-content: center;
             font-size: 20px;
+            flex-shrink: 0;
         }
 
         .chat-header-name {
             color: white;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
         }
 
         .chat-header-status {
-            font-size: 12px;
+            font-size: 11px;
             color: #6c7883;
         }
 
@@ -283,25 +283,26 @@
             background: #242f3d;
             padding: 6px 12px;
             border-radius: 20px;
-            font-size: 12px;
+            font-size: 11px;
             color: #2aab6e;
             cursor: pointer;
+            white-space: nowrap;
         }
 
         /* Сообщения */
         .messages-area {
             flex: 1;
             overflow-y: auto;
-            padding: 20px;
+            padding: 16px;
             display: flex;
             flex-direction: column;
             gap: 8px;
+            -webkit-overflow-scrolling: touch;
         }
 
         .message {
-            max-width: 70%;
+            max-width: 80%;
             animation: fadeIn 0.2s ease;
-            position: relative;
         }
 
         .message-sent {
@@ -313,7 +314,7 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(5px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
@@ -322,7 +323,6 @@
             border-radius: 18px;
             font-size: 14px;
             word-wrap: break-word;
-            position: relative;
         }
 
         .message-sent .bubble {
@@ -346,7 +346,7 @@
             background: #242f3d;
             color: #6c7883;
             text-align: center;
-            font-size: 12px;
+            font-size: 11px;
         }
 
         .message-name {
@@ -356,7 +356,7 @@
         }
 
         .message-time {
-            font-size: 10px;
+            font-size: 9px;
             color: #6c7883;
             margin-top: 4px;
         }
@@ -367,37 +367,38 @@
 
         /* Индикатор печатания */
         .typing-indicator {
-            padding: 5px 20px;
-            font-size: 12px;
+            padding: 5px 16px;
+            font-size: 11px;
             color: #6c7883;
             font-style: italic;
         }
 
         /* Ввод сообщения */
         .input-area {
-            padding: 15px 20px;
+            padding: 12px 16px;
             background: #17212b;
             display: flex;
-            gap: 10px;
+            gap: 8px;
             border-top: 1px solid #242f3d;
         }
 
         .input-wrapper {
             flex: 1;
             display: flex;
-            gap: 10px;
+            gap: 8px;
             background: #242f3d;
             border-radius: 25px;
-            padding: 5px 15px;
+            padding: 5px 12px;
+            align-items: center;
         }
 
         #messageInput {
             flex: 1;
-            padding: 10px 0;
+            padding: 8px 0;
             background: transparent;
             border: none;
             color: white;
-            font-size: 14px;
+            font-size: 15px;
             outline: none;
         }
 
@@ -405,11 +406,11 @@
             color: #6c7883;
         }
 
-        .emoji-btn, .attach-btn {
+        .emoji-btn {
             background: transparent;
             border: none;
             color: #6c7883;
-            font-size: 20px;
+            font-size: 22px;
             cursor: pointer;
             padding: 5px;
         }
@@ -423,11 +424,6 @@
             border-radius: 50%;
             cursor: pointer;
             font-size: 20px;
-            transition: transform 0.1s;
-        }
-
-        #sendBtn:active {
-            transform: scale(0.95);
         }
 
         /* Модальные окна */
@@ -446,26 +442,27 @@
 
         .modal-content {
             background: #17212b;
-            padding: 25px;
+            padding: 24px;
             border-radius: 20px;
             width: 90%;
-            max-width: 400px;
+            max-width: 350px;
         }
 
         .modal-content h3 {
             color: white;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
+            font-size: 18px;
         }
 
-        .modal-content input, .modal-content textarea {
+        .modal-content input {
             width: 100%;
             padding: 12px;
             background: #242f3d;
             border: none;
             border-radius: 10px;
             color: white;
-            margin-bottom: 15px;
-            outline: none;
+            margin-bottom: 12px;
+            font-size: 14px;
         }
 
         .modal-content button {
@@ -476,7 +473,8 @@
             border-radius: 10px;
             color: white;
             cursor: pointer;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            font-size: 14px;
         }
 
         .users-list {
@@ -494,7 +492,7 @@
             gap: 10px;
         }
 
-        .user-item:hover {
+        .user-item:active {
             background: #242f3d;
         }
 
@@ -510,32 +508,89 @@
         .emoji-panel {
             position: fixed;
             bottom: 80px;
-            left: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             background: #17212b;
-            border-radius: 15px;
-            padding: 10px;
+            border-radius: 20px;
+            padding: 12px;
             display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            gap: 8px;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
             z-index: 1000;
             border: 1px solid #242f3d;
+            width: 280px;
         }
 
         .emoji-panel span {
-            font-size: 24px;
+            font-size: 28px;
             cursor: pointer;
             padding: 5px;
             text-align: center;
         }
 
-        .emoji-panel span:hover {
+        .emoji-panel span:active {
             background: #242f3d;
-            border-radius: 8px;
+            border-radius: 10px;
+        }
+
+        /* Экран входа */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #0e1621;
+            padding: 20px;
+        }
+
+        .login-box {
+            background: #17212b;
+            padding: 40px 30px;
+            border-radius: 24px;
+            text-align: center;
+            width: 100%;
+            max-width: 320px;
+        }
+
+        .login-box h1 {
+            color: white;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .login-box p {
+            color: #6c7883;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .login-box input {
+            width: 100%;
+            padding: 14px;
+            background: #242f3d;
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .login-box button {
+            width: 100%;
+            padding: 14px;
+            background: #2aab6e;
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
-    <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+    <button class="menu-btn" onclick="toggleSidebar()">☰</button>
     <div id="app"></div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -548,10 +603,10 @@
         let typingTimeout;
         let emojiPanel = null;
 
-        // Эмодзи
-        const emojis = ['😀', '😂', '😍', '🥰', '😎', '🤔', '😢', '🔥', '💀', '👍', '❤️', '🎉', '✨', '⭐', '💬', '📱'];
+        const emojis = ['😀', '😂', '😍', '🥰', '😎', '🤔', '😢', '🔥', '👍', '❤️', '🎉', '✨', '⭐', '💬', '👋', '🙏'];
 
         function escapeHtml(text) {
+            if (!text) return '';
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
@@ -562,29 +617,29 @@
             return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
 
-        function formatDate(timestamp) {
-            const date = new Date(timestamp);
-            const now = new Date();
-            if (date.toDateString() === now.toDateString()) {
-                return formatTime(timestamp);
-            }
-            return date.toLocaleDateString();
-        }
-
         function toggleSidebar() {
-            document.querySelector('.sidebar')?.classList.toggle('open');
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) {
+                sidebar.classList.toggle('open');
+            }
         }
 
-        // Экран входа
+        function closeSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar && window.innerWidth <= 768) {
+                sidebar.classList.remove('open');
+            }
+        }
+
         function showLogin() {
             document.getElementById('app').innerHTML = `
-                <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #0e1621;">
-                    <div style="background: #17212b; padding: 40px; border-radius: 20px; text-align: center; width: 350px;">
-                        <div style="font-size: 60px; margin-bottom: 20px;">✨</div>
-                        <h1 style="color: white; margin-bottom: 10px;">Мессенджер</h1>
-                        <p style="color: #6c7883; margin-bottom: 30px;">Чат с друзьями в реальном времени</p>
-                        <input type="text" id="username" placeholder="Ваше имя" style="width: 100%; padding: 12px; background: #242f3d; border: none; border-radius: 10px; color: white; margin-bottom: 15px;">
-                        <button id="loginBtn" style="width: 100%; padding: 12px; background: #2aab6e; border: none; border-radius: 10px; color: white; font-size: 16px; cursor: pointer;">Войти</button>
+                <div class="login-container">
+                    <div class="login-box">
+                        <div style="font-size: 50px; margin-bottom: 15px;">✨</div>
+                        <h1>Мессенджер</h1>
+                        <p>Чат с друзьями в реальном времени</p>
+                        <input type="text" id="username" placeholder="Ваше имя" autocomplete="off">
+                        <button id="loginBtn">Войти</button>
                     </div>
                 </div>
             `;
@@ -604,34 +659,33 @@
                     setupSocketEvents();
                 });
             };
+            
+            document.getElementById('username').onkeypress = (e) => {
+                if (e.key === 'Enter') document.getElementById('loginBtn').click();
+            };
         }
 
         function setupSocketEvents() {
-            // Список пользователей онлайн
             socket.on('users list', (users) => {
                 onlineUsers = users;
                 updateOnlineStatus();
             });
             
-            // Список чатов
             socket.on('chats list', (chatsList) => {
                 chats = chatsList;
                 renderChatsList();
             });
             
-            // Новый чат создан
             socket.on('chat created', (chat) => {
                 chats.unshift(chat);
                 renderChatsList();
             });
             
-            // Новый чат от кого-то
             socket.on('new chat', (chat) => {
                 chats.unshift(chat);
                 renderChatsList();
             });
             
-            // Новое сообщение
             socket.on('new message', (data) => {
                 const chat = chats.find(c => c.id === data.chatId);
                 if (chat) {
@@ -641,27 +695,21 @@
                         renderMessages();
                     }
                     renderChatsList();
-                } else {
-                    // Может быть новый чат
-                    socket.emit('get chats');
                 }
             });
             
-            // Подтверждение отправки
             socket.on('message sent', (data) => {
                 if (currentChat?.id === data.chatId) {
                     renderMessages();
                 }
             });
             
-            // История чата
             socket.on('chat history', (data) => {
                 if (currentChat?.id === data.chatId) {
                     renderMessagesWithHistory(data.messages);
                 }
             });
             
-            // Пользователь печатает
             socket.on('user typing', (data) => {
                 if (currentChat?.id === data.chatId) {
                     const indicator = document.getElementById('typingIndicator');
@@ -676,13 +724,11 @@
                 }
             });
             
-            // Группа создана
             socket.on('group joined', (group) => {
                 chats.unshift(group);
                 renderChatsList();
             });
             
-            // Ошибка
             socket.on('error', (msg) => {
                 alert(msg);
             });
@@ -696,15 +742,15 @@
                     <div class="sidebar" id="sidebar">
                         <div class="sidebar-header">
                             <div class="user-card">
-                                <div class="avatar" onclick="showProfileModal()">${getAvatarEmoji(currentUser?.name || '?')}</div>
+                                <div class="avatar">${getAvatarEmoji(currentUser?.name || '?')}</div>
                                 <div class="user-info">
                                     <div class="user-name">${escapeHtml(currentUser?.name || '')}</div>
-                                    <div class="user-status"><span class="online-dot"></span> Онлайн</div>
+                                    <div class="user-status" id="onlineStatus"><span class="online-dot"></span> Загрузка...</div>
                                 </div>
                             </div>
                             <button class="new-chat-btn" onclick="showNewChatModal()">➕ Новый чат</button>
                             <button class="new-group-btn" onclick="showNewGroupModal()">👥 Создать группу</button>
-                            <button class="settings-btn" onclick="showJoinGroupModal()">🔗 Войти по коду</button>
+                            <button class="join-group-btn" onclick="showJoinGroupModal()">🔗 Войти по коду</button>
                         </div>
                         <div class="chats-list" id="chatsList"></div>
                     </div>
@@ -741,10 +787,11 @@
                 if (currentChat.type === 'group' && currentChat.inviteCode) {
                     const inviteSpan = document.createElement('span');
                     inviteSpan.className = 'invite-code';
-                    inviteSpan.textContent = `🔗 Код: ${currentChat.inviteCode}`;
-                    inviteSpan.onclick = () => {
+                    inviteSpan.textContent = `🔗 ${currentChat.inviteCode}`;
+                    inviteSpan.onclick = (e) => {
+                        e.stopPropagation();
                         navigator.clipboard.writeText(currentChat.inviteCode);
-                        alert('✅ Код скопирован! Отправьте его друзьям');
+                        alert('✅ Код скопирован!');
                     };
                     document.querySelector('.chat-header').appendChild(inviteSpan);
                 }
@@ -755,12 +802,14 @@
                 const sendBtn = document.getElementById('sendBtn');
                 const input = document.getElementById('messageInput');
                 
-                sendBtn.onclick = sendMessage;
+                sendBtn.onclick = () => sendMessage();
                 input.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
+                
+                let typingTimer;
                 input.oninput = () => {
                     socket.emit('typing', { chatId: currentChat.id, isTyping: true });
-                    clearTimeout(typingTimeout);
-                    typingTimeout = setTimeout(() => {
+                    clearTimeout(typingTimer);
+                    typingTimer = setTimeout(() => {
                         socket.emit('typing', { chatId: currentChat.id, isTyping: false });
                     }, 1000);
                 };
@@ -773,34 +822,31 @@
             
             container.innerHTML = '';
             
+            if (chats.length === 0) {
+                container.innerHTML = '<div style="color: #6c7883; text-align: center; padding: 40px;">Нет чатов<br>Создайте новый</div>';
+                return;
+            }
+            
             for (const chat of chats) {
                 const div = document.createElement('div');
                 div.className = `chat-item ${currentChat?.id === chat.id ? 'active' : ''}`;
                 div.innerHTML = `
-                    <div class="chat-avatar">
-                        ${chat.avatar || (chat.type === 'group' ? '👥' : '💬')}
-                    </div>
+                    <div class="chat-avatar">${chat.avatar || (chat.type === 'group' ? '👥' : '💬')}</div>
                     <div class="chat-info">
                         <div class="chat-name">
                             ${escapeHtml(chat.name)}
                             ${chat.unread ? `<span class="unread-badge">${chat.unread}</span>` : ''}
                         </div>
-                        <div class="chat-last-msg">${escapeHtml(chat.lastMessage?.substring(0, 40) || 'Нет сообщений')}</div>
+                        <div class="chat-last-msg">${escapeHtml(chat.lastMessage ? chat.lastMessage.substring(0, 35) : 'Нет сообщений')}</div>
                     </div>
                     <div class="chat-time">${chat.lastMessageTime ? formatTime(chat.lastMessageTime) : ''}</div>
                 `;
                 div.onclick = () => {
                     currentChat = chat;
                     renderMainChat();
-                    if (window.innerWidth <= 768) {
-                        toggleSidebar();
-                    }
+                    closeSidebar();
                 };
                 container.appendChild(div);
-            }
-            
-            if (chats.length === 0) {
-                container.innerHTML = '<div style="color: #6c7883; text-align: center; padding: 40px;">Нет чатов<br>Создайте новый чат или группу</div>';
             }
         }
 
@@ -814,7 +860,9 @@
                 addMessageToContainer(msg);
             }
             
-            container.scrollTop = container.scrollHeight;
+            setTimeout(() => {
+                container.scrollTop = container.scrollHeight;
+            }, 100);
         }
 
         function renderMessages() {
@@ -861,17 +909,17 @@
 
         function updateOnlineStatus() {
             const count = onlineUsers.length;
-            const statusDiv = document.querySelector('.user-status');
+            const statusDiv = document.getElementById('onlineStatus');
             if (statusDiv) {
                 statusDiv.innerHTML = `<span class="online-dot"></span> ${count} ${getWord(count, 'человек', 'человека', 'человек')} онлайн`;
             }
         }
 
         function getAvatarEmoji(name) {
+            if (!name) return '👤';
             const firstChar = name.charAt(0).toUpperCase();
             if (firstChar >= 'A' && firstChar <= 'Z') return firstChar;
-            if (firstChar >= 'А' && firstChar <= 'Я') return '👤';
-            return '😊';
+            return '👤';
         }
 
         function getWord(n, one, two, five) {
@@ -911,6 +959,7 @@
 
         // Модальные окна
         window.showNewChatModal = function() {
+            closeSidebar();
             const modal = document.createElement('div');
             modal.className = 'modal';
             modal.innerHTML = `
@@ -925,11 +974,14 @@
             const usersList = document.getElementById('usersList');
             usersList.innerHTML = '';
             
-            for (const user of onlineUsers) {
-                if (user.id !== socket.id) {
+            const otherUsers = onlineUsers.filter(u => u.id !== socket.id);
+            if (otherUsers.length === 0) {
+                usersList.innerHTML = '<div style="color: #6c7883; padding: 20px; text-align: center;">Нет других пользователей онлайн</div>';
+            } else {
+                for (const user of otherUsers) {
                     const userDiv = document.createElement('div');
                     userDiv.className = 'user-item';
-                    userDiv.innerHTML = `<div class="avatar" style="width: 32px; height: 32px; font-size: 16px;">${user.avatar || '👤'}</div> ${escapeHtml(user.name)}`;
+                    userDiv.innerHTML = `<div style="width: 32px; height: 32px; background: #2b5278; border-radius: 50%; display: flex; align-items: center; justify-content: center;">${user.avatar || '👤'}</div> ${escapeHtml(user.name)}`;
                     userDiv.onclick = () => {
                         socket.emit('create private chat', user.id);
                         modal.remove();
@@ -940,6 +992,7 @@
         };
 
         window.showNewGroupModal = function() {
+            closeSidebar();
             const modal = document.createElement('div');
             modal.className = 'modal';
             modal.innerHTML = `
@@ -964,6 +1017,7 @@
         };
 
         window.showJoinGroupModal = function() {
+            closeSidebar();
             const modal = document.createElement('div');
             modal.className = 'modal';
             modal.innerHTML = `
@@ -987,21 +1041,14 @@
             };
         };
 
-        window.showProfileModal = function() {
-            const modal = document.createElement('div');
-            modal.className = 'modal';
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <h3>👤 Профиль</h3>
-                    <div style="text-align: center; font-size: 48px; margin-bottom: 15px;">${getAvatarEmoji(currentUser.name)}</div>
-                    <div style="color: white; text-align: center; margin-bottom: 15px;">${escapeHtml(currentUser.name)}</div>
-                    <button class="close-modal" onclick="this.closest('.modal').remove()">Закрыть</button>
-                </div>
-            `;
-            document.body.appendChild(modal);
-        };
+        // Закрытие эмодзи панели при клике вне
+        document.addEventListener('click', (e) => {
+            if (emojiPanel && !e.target.closest('.emoji-panel') && !e.target.closest('.emoji-btn')) {
+                emojiPanel.remove();
+                emojiPanel = null;
+            }
+        });
 
-        // Запуск
         showLogin();
     </script>
 </body>
