@@ -8,22 +8,25 @@ const server = http.createServer(app);
 const io = socketIO(server);
 
 // Хранилище данных
-let users = [];        // { id, phone, name, online }
+let users = [];
 let messages = [];
 let onlineUsers = new Map();
 
 app.use(express.json({ limit: '50mb' }));
-app.use(express.static('public'));
+app.use(express.static(__dirname)); // <-- Ищет файлы в корне
 
-// РЕГИСТРАЦИЯ/ВХОД ПО НОМЕРУ ТЕЛЕФОНА (без пароля!)
+// Главная страница - index.html в корне
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Регистрация/вход по номеру телефона
 app.post('/api/login', (req, res) => {
     const { phone, name } = req.body;
     
-    // Ищем пользователя
     let user = users.find(u => u.phone === phone);
     
     if (!user) {
-        // Новый пользователь - регистрируем автоматически
         user = {
             id: Date.now().toString(),
             phone: phone,
@@ -58,7 +61,7 @@ app.post('/api/verify', (req, res) => {
     res.json({ user });
 });
 
-// Получение всех пользователей (контакты)
+// Получение всех пользователей
 app.get('/api/users', (req, res) => {
     res.json(users.map(u => ({
         id: u.id,
@@ -69,12 +72,7 @@ app.get('/api/users', (req, res) => {
     })));
 });
 
-// Главная страница
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// WebSocket для чата
+// WebSocket
 io.on('connection', (socket) => {
     console.log('🔌 Новое подключение');
     let currentUserId = null;
@@ -83,19 +81,14 @@ io.on('connection', (socket) => {
         currentUserId = userId;
         onlineUsers.set(userId, socket.id);
         
-        // Обновляем статус пользователя
         const user = users.find(u => u.id === userId);
         if (user) user.online = true;
         
-        // Отправляем историю сообщений
         socket.emit('chat history', messages);
-        
-        // Рассылаем обновлённый список онлайн
         io.emit('users online', Array.from(onlineUsers.keys()));
         io.emit('users list', users);
     });
     
-    // Отправка сообщения
     socket.on('send message', (data) => {
         const user = users.find(u => u.id === currentUserId);
         if (!user) return;
@@ -118,12 +111,10 @@ io.on('connection', (socket) => {
         io.emit('new message', message);
     });
     
-    // Пользователь печатает
     socket.on('typing', (isTyping) => {
         socket.broadcast.emit('user typing', { userId: currentUserId, isTyping });
     });
     
-    // Отключение
     socket.on('disconnect', () => {
         if (currentUserId) {
             onlineUsers.delete(currentUserId);
@@ -136,20 +127,13 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`
     ╔════════════════════════════════════════════╗
     ║     ✅ VANOGRAM ЗАПУЩЕН!                   ║
     ╠════════════════════════════════════════════╣
     ║  📱 Откройте в браузере:                   ║
-    ║     http://localhost:${PORT}                ║
-    ╠════════════════════════════════════════════╣
-    ║  👥 Для друзей (в одной сети):             ║
-    ║     http://ВАШ_IP:${PORT}                  ║
-    ║     (узнайте IP командой ipconfig)         ║
-    ╠════════════════════════════════════════════╣
-    ║  💡 Вход только по номеру телефона!        ║
-    ║     Без пароля!                            ║
+    ║     https://vanogram.onrender.com          ║
     ╚════════════════════════════════════════════╝
     `);
 });
