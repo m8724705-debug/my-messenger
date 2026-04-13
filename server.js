@@ -5,7 +5,12 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIO(server);
+const io = socketIO(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
 
 // Хранилище данных
 let users = [];
@@ -20,35 +25,24 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Регистрация/вход
-app.post('/api/login', (req, res) => {
-    const { phone, name } = req.body;
+// Регистрация по номеру телефона (один раз на устройство)
+app.post('/api/register', (req, res) => {
+    const { phone, name, deviceId } = req.body;
     
-    let user = users.find(u => u.phone === phone);
+    // Ищем пользователя по номеру телефона или deviceId
+    let user = users.find(u => u.phone === phone || u.deviceId === deviceId);
     
     if (!user) {
         user = {
             id: Date.now().toString(),
             phone: phone,
             name: name || phone,
+            deviceId: deviceId,
             avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name || phone)}&background=3390ec&color=fff&bold=true`,
             createdAt: new Date()
         };
         users.push(user);
-        
-        // Создаём общий чат
-        const generalChat = {
-            id: 'general',
-            type: 'group',
-            name: 'Общий чат',
-            avatar: '💬',
-            members: [user.id],
-            createdBy: 'system',
-            createdAt: Date.now()
-        };
-        if (!chats.find(c => c.id === 'general')) {
-            chats.push(generalChat);
-        }
+        console.log(`✅ Новый пользователь: ${user.name} (${user.phone})`);
     }
     
     res.json({ 
@@ -77,31 +71,32 @@ app.get('/api/users', (req, res) => {
         phone: u.phone,
         name: u.name,
         avatar: u.avatar,
-        online: onlineUsers.has(u.id),
-        lastSeen: u.lastSeen
+        online: onlineUsers.has(u.id)
     })));
 });
 
-// Получение всех чатов
+// Получение чатов пользователя
 app.get('/api/chats', (req, res) => {
-    const userChats = chats.map(chat => {
+    const userId = req.query.userId;
+    const userChats = chats.filter(chat => chat.members.includes(userId));
+    
+    const result = userChats.map(chat => {
         const lastMsg = messages.filter(m => m.chatId === chat.id).pop();
-        const unread = messages.filter(m => m.chatId === chat.id && !m.readBy?.includes(req.query.userId)).length;
         return {
             ...chat,
             lastMessage: lastMsg?.text || '',
-            lastMessageTime: lastMsg?.timestamp || chat.createdAt,
-            unread: unread
+            lastMessageTime: lastMsg?.timestamp || chat.createdAt
         };
     });
-    res.json(userChats);
+    
+    res.json(result);
 });
 
 // Создание личного чата
 app.post('/api/create-chat', (req, res) => {
     const { userId, targetUserId } = req.body;
     
-    const existingChat = chats.find(c => 
+    let existingChat = chats.find(c => 
         c.type === 'private' && 
         c.members.includes(userId) && 
         c.members.includes(targetUserId)
@@ -143,19 +138,6 @@ app.post('/api/create-group', (req, res) => {
     res.json(newGroup);
 });
 
-// Присоединение к группе
-app.post('/api/join-group', (req, res) => {
-    const { chatId, userId } = req.body;
-    const chat = chats.find(c => c.id === chatId);
-    
-    if (chat && !chat.members.includes(userId)) {
-        chat.members.push(userId);
-        res.json(chat);
-    } else {
-        res.status(400).json({ error: 'Не удалось присоединиться' });
-    }
-});
-
 // WebSocket
 io.on('connection', (socket) => {
     console.log('🔌 Новое подключение');
@@ -166,12 +148,8 @@ io.on('connection', (socket) => {
         onlineUsers.set(userId, socket.id);
         
         const user = users.find(u => u.id === userId);
-        if (user) {
-            user.online = true;
-            user.lastSeen = Date.now();
-        }
+        if (user) user.online = true;
         
-        // Отправляем историю сообщений для чатов пользователя
         const userChats = chats.filter(chat => chat.members.includes(userId));
         const userMessages = messages.filter(msg => userChats.some(chat => chat.id === msg.chatId));
         socket.emit('chat history', userMessages);
@@ -181,6 +159,7 @@ io.on('connection', (socket) => {
         io.emit('chats list', chats);
     });
     
+    // Отправка сообщения
     socket.on('send message', (data) => {
         const user = users.find(u => u.id === currentUserId);
         if (!user) return;
@@ -194,7 +173,6 @@ io.on('connection', (socket) => {
             text: data.text,
             image: data.image || null,
             audio: data.audio || null,
-            replyTo: data.replyTo || null,
             timestamp: Date.now(),
             readBy: [currentUserId]
         };
@@ -205,7 +183,7 @@ io.on('connection', (socket) => {
         const chat = chats.find(c => c.id === data.chatId);
         if (chat) {
             chat.members.forEach(memberId => {
-                if (memberId !== currentUserId) {
+                if (memberId !== currentUserId && onlineUsers.has(memberId)) {
                     io.to(onlineUsers.get(memberId)).emit('new message', message);
                 }
             });
@@ -214,6 +192,50 @@ io.on('connection', (socket) => {
         socket.emit('message sent', message);
     });
     
+    // ========== ГОЛОСОВЫЕ ЗВОНКИ (WebRTC) ==========
+    socket.on('call user', (data) => {
+        const { targetUserId, offer } = data;
+        const targetSocketId = onlineUsers.get(targetUserId);
+        
+        if (targetSocketId) {
+            io.to(targetSocketId).emit('incoming call', {
+                from: currentUserId,
+                fromName: users.find(u => u.id === currentUserId)?.name,
+                offer: offer
+            });
+        } else {
+            socket.emit('call error', { message: 'Пользователь не в сети' });
+        }
+    });
+    
+    socket.on('answer call', (data) => {
+        const { targetUserId, answer } = data;
+        const targetSocketId = onlineUsers.get(targetUserId);
+        
+        if (targetSocketId) {
+            io.to(targetSocketId).emit('call answered', { answer: answer });
+        }
+    });
+    
+    socket.on('ice candidate', (data) => {
+        const { targetUserId, candidate } = data;
+        const targetSocketId = onlineUsers.get(targetUserId);
+        
+        if (targetSocketId) {
+            io.to(targetSocketId).emit('ice candidate', { candidate: candidate });
+        }
+    });
+    
+    socket.on('end call', (data) => {
+        const { targetUserId } = data;
+        const targetSocketId = onlineUsers.get(targetUserId);
+        
+        if (targetSocketId) {
+            io.to(targetSocketId).emit('call ended');
+        }
+    });
+    
+    // Печатание
     socket.on('typing', (data) => {
         const { chatId, isTyping } = data;
         const chat = chats.find(c => c.id === chatId);
@@ -232,43 +254,11 @@ io.on('connection', (socket) => {
         }
     });
     
-    socket.on('mark read', (data) => {
-        const { chatId, messageId } = data;
-        const message = messages.find(m => m.id === messageId);
-        if (message && !message.readBy.includes(currentUserId)) {
-            message.readBy.push(currentUserId);
-            io.emit('message read', { chatId, messageId, userId: currentUserId });
-        }
-    });
-    
-    socket.on('delete message', (data) => {
-        const { messageId } = data;
-        const index = messages.findIndex(m => m.id === messageId);
-        if (index !== -1) {
-            const message = messages[index];
-            messages.splice(index, 1);
-            io.emit('message deleted', { chatId: message.chatId, messageId });
-        }
-    });
-    
-    socket.on('edit message', (data) => {
-        const { messageId, newText } = data;
-        const message = messages.find(m => m.id === messageId);
-        if (message && message.userId === currentUserId) {
-            message.text = newText;
-            message.edited = true;
-            io.emit('message edited', { chatId: message.chatId, messageId, newText });
-        }
-    });
-    
     socket.on('disconnect', () => {
         if (currentUserId) {
             onlineUsers.delete(currentUserId);
             const user = users.find(u => u.id === currentUserId);
-            if (user) {
-                user.online = false;
-                user.lastSeen = Date.now();
-            }
+            if (user) user.online = false;
             io.emit('users online', Array.from(onlineUsers.keys()));
             io.emit('users list', users);
         }
@@ -279,10 +269,13 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`
     ╔════════════════════════════════════════════╗
-    ║     ✅ VANOGRAM 2.0 ЗАПУЩЕН!               ║
+    ║     ✅ VANOGRAM PRO ЗАПУЩЕН!               ║
     ╠════════════════════════════════════════════╣
     ║  📱 Откройте в браузере:                   ║
     ║     https://vanogram.onrender.com          ║
+    ╠════════════════════════════════════════════╣
+    ║  📞 ГОЛОСОВЫЕ ЗВОНКИ:                      ║
+    ║     Нажмите на контакт → кнопка звонка     ║
     ╚════════════════════════════════════════════╝
     `);
 });
