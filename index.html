@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Vanogram Pro | Мессенджер со звонками</title>
+    <title>Vanogram Pro | Мессенджер</title>
     <style>
         * {
             margin: 0;
@@ -11,6 +11,7 @@
             box-sizing: border-box;
         }
 
+        /* СВЕТЛАЯ ТЕМА КАК В TELEGRAM */
         :root {
             --bg-primary: #ffffff;
             --bg-secondary: #f0f2f5;
@@ -21,7 +22,9 @@
             --text-secondary: #65676b;
             --border-color: #e4e6eb;
             --accent-color: #3390ec;
+            --accent-hover: #2a7bc8;
             --online-color: #31a24c;
+            --error-color: #e53935;
         }
 
         body {
@@ -31,6 +34,7 @@
             overflow: hidden;
         }
 
+        /* Основной контейнер */
         .app {
             display: flex;
             height: 100vh;
@@ -38,7 +42,7 @@
             margin: 0 auto;
         }
 
-        /* Боковая панель */
+        /* Боковая панель (список чатов) */
         .sidebar {
             width: 360px;
             background: var(--bg-primary);
@@ -114,6 +118,10 @@
             outline: none;
         }
 
+        .search-input:focus {
+            outline: 2px solid var(--accent-color);
+        }
+
         /* Список чатов */
         .chats-list {
             flex: 1;
@@ -148,6 +156,13 @@
             font-size: 24px;
             background: var(--bg-secondary);
             flex-shrink: 0;
+        }
+
+        .chat-avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
         }
 
         .chat-info {
@@ -216,7 +231,7 @@
             color: var(--text-secondary);
         }
 
-        .call-btn {
+        .call-btn, .group-btn {
             background: var(--accent-color);
             border: none;
             width: 44px;
@@ -225,6 +240,11 @@
             cursor: pointer;
             font-size: 20px;
             color: white;
+            transition: background 0.2s;
+        }
+
+        .call-btn:hover, .group-btn:hover {
+            background: var(--accent-hover);
         }
 
         /* Сообщения */
@@ -242,6 +262,7 @@
             flex-direction: column;
             max-width: 65%;
             animation: fadeIn 0.2s ease;
+            position: relative;
         }
 
         @keyframes fadeIn {
@@ -289,10 +310,13 @@
             font-size: 11px;
             color: var(--text-secondary);
             margin: 4px 8px 0;
+            display: flex;
+            gap: 8px;
+            align-items: center;
         }
 
         .sent .message-info {
-            text-align: right;
+            justify-content: flex-end;
         }
 
         .message-name {
@@ -355,6 +379,10 @@
             outline: none;
         }
 
+        #messageInput::placeholder {
+            color: var(--text-secondary);
+        }
+
         #sendBtn {
             background: var(--accent-color);
             border: none;
@@ -364,6 +392,11 @@
             border-radius: 50%;
             cursor: pointer;
             font-size: 20px;
+            transition: transform 0.1s;
+        }
+
+        #sendBtn:active {
+            transform: scale(0.95);
         }
 
         /* Экран звонка */
@@ -386,6 +419,7 @@
             height: 120px;
             border-radius: 50%;
             margin-bottom: 20px;
+            object-fit: cover;
         }
 
         .call-name {
@@ -413,6 +447,11 @@
             border: none;
             font-size: 28px;
             cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .call-control:active {
+            transform: scale(0.95);
         }
 
         .accept-call {
@@ -423,10 +462,6 @@
         .end-call {
             background: #e53935;
             color: white;
-        }
-
-        .hidden {
-            display: none;
         }
 
         /* Экран входа */
@@ -446,6 +481,11 @@
             font-size: 36px;
         }
 
+        .login-screen p {
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+
         .login-screen input {
             width: 100%;
             padding: 16px;
@@ -455,6 +495,11 @@
             font-size: 16px;
             margin-bottom: 16px;
             text-align: center;
+            outline: none;
+        }
+
+        .login-screen input:focus {
+            outline: 2px solid var(--accent-color);
         }
 
         .login-screen button {
@@ -467,6 +512,21 @@
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .login-screen button:hover {
+            background: var(--accent-hover);
+        }
+
+        .error {
+            color: var(--error-color);
+            font-size: 13px;
+            margin-top: 12px;
+        }
+
+        .hidden {
+            display: none;
         }
 
         /* Мобильное меню */
@@ -474,6 +534,71 @@
             display: none;
         }
 
+        /* Профиль модальное окно */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .modal-content {
+            background: var(--bg-primary);
+            border-radius: 24px;
+            padding: 32px;
+            width: 90%;
+            max-width: 380px;
+            text-align: center;
+        }
+
+        .modal-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin-bottom: 16px;
+            object-fit: cover;
+        }
+
+        .modal-name {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .modal-phone {
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .modal-btn {
+            background: var(--error-color);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 12px;
+            width: 100%;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+
+        .modal-close {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: none;
+            padding: 12px;
+            border-radius: 12px;
+            width: 100%;
+            cursor: pointer;
+        }
+
+        /* Адаптив для телефона */
         @media (max-width: 768px) {
             .sidebar {
                 position: fixed;
@@ -482,14 +607,14 @@
                 height: 100%;
                 z-index: 1000;
                 transform: translateX(-100%);
-                transition: transform 0.3s;
+                transition: transform 0.3s ease;
                 width: 85%;
             }
             .sidebar.open {
                 transform: translateX(0);
             }
             .menu-btn-mobile {
-                display: block;
+                display: flex;
                 position: fixed;
                 left: 16px;
                 top: 16px;
@@ -502,6 +627,15 @@
                 color: white;
                 font-size: 20px;
                 cursor: pointer;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            }
+            .main-chat {
+                width: 100%;
+            }
+            .chat-header {
+                padding-left: 70px;
             }
             .message {
                 max-width: 85%;
@@ -530,12 +664,12 @@
     let peerConnection = null;
     let localStream = null;
     let currentCall = null;
-    let callInterval = null;
     
     const configuration = {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' }
         ]
     };
 
@@ -564,7 +698,7 @@
         return deviceId;
     }
 
-    // ========== АВТОРИЗАЦИЯ (ОДИН РАЗ НА УСТРОЙСТВЕ) ==========
+    // ========== АВТОРИЗАЦИЯ ==========
     async function checkAuth() {
         if (!token) { showLogin(); return; }
         try {
@@ -587,12 +721,16 @@
     }
 
     async function loadData() {
-        const [usersRes, chatsRes] = await Promise.all([
-            fetch('/api/users'),
-            fetch('/api/chats?userId=' + currentUser.id)
-        ]);
-        users = await usersRes.json();
-        chats = await chatsRes.json();
+        try {
+            const [usersRes, chatsRes] = await Promise.all([
+                fetch('/api/users'),
+                fetch('/api/chats?userId=' + currentUser.id)
+            ]);
+            users = await usersRes.json();
+            chats = await chatsRes.json();
+        } catch(e) {
+            console.error('Ошибка загрузки данных:', e);
+        }
     }
 
     function showLogin() {
@@ -600,11 +738,11 @@
             <div style="display:flex;justify-content:center;align-items:center;height:100vh;background:var(--bg-secondary);">
                 <div class="login-screen">
                     <h1>📱 Vanogram Pro</h1>
-                    <p>Введите номер телефона</p>
+                    <p>Введите номер телефона для входа</p>
                     <input type="tel" id="phone" placeholder="+7 XXX XXX XX XX" value="+7">
                     <input type="text" id="name" placeholder="Ваше имя">
                     <button id="loginBtn">Продолжить</button>
-                    <div class="error" id="errorMsg" style="color:#e53935;margin-top:12px;"></div>
+                    <div class="error" id="errorMsg"></div>
                 </div>
             </div>
         `;
@@ -613,7 +751,7 @@
             const phone = document.getElementById('phone').value.trim();
             const name = document.getElementById('name').value.trim();
             if (!phone || phone.length < 10) {
-                document.getElementById('errorMsg').textContent = 'Введите корректный номер';
+                document.getElementById('errorMsg').textContent = 'Введите корректный номер телефона';
                 return;
             }
             try {
@@ -631,10 +769,10 @@
                     connectWebSocket();
                     showMainApp();
                 } else {
-                    document.getElementById('errorMsg').textContent = data.error || 'Ошибка';
+                    document.getElementById('errorMsg').textContent = data.error || 'Ошибка регистрации';
                 }
             } catch(e) {
-                document.getElementById('errorMsg').textContent = 'Ошибка соединения';
+                document.getElementById('errorMsg').textContent = 'Ошибка соединения с сервером';
             }
         };
     }
@@ -646,7 +784,9 @@
         
         socket = io(wsUrl, {
             transports: ['websocket', 'polling'],
-            reconnection: true
+            reconnection: true,
+            reconnectionAttempts: 10,
+            reconnectionDelay: 1000
         });
         
         socket.on('connect', () => {
@@ -720,12 +860,12 @@
             alert('Звонок завершён');
         });
         
-        socket.on('call error', (data) => {
-            alert(data.message);
+        socket.on('connect_error', (error) => {
+            console.error('WebSocket ошибка:', error);
         });
     }
 
-    // ========== ФУНКЦИИ ЗВОНКОВ ==========
+    // ========== ЗВОНКИ ==========
     async function startCall(targetUserId, targetName) {
         try {
             localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -745,6 +885,10 @@
                 }
             };
             
+            peerConnection.ontrack = (event) => {
+                console.log('Получен трек');
+            };
+            
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
             
@@ -758,7 +902,7 @@
             
         } catch (error) {
             console.error('Ошибка звонка:', error);
-            alert('Не удалось получить доступ к микрофону');
+            alert('Не удалось получить доступ к микрофону. Разрешите доступ в настройках браузера.');
         }
     }
     
@@ -767,7 +911,7 @@
         modal.className = 'call-modal';
         modal.id = 'incomingCallModal';
         modal.innerHTML = `
-            <img src="${data.fromName}" class="call-avatar" onerror="this.src='https://ui-avatars.com/api/?name=${data.fromName}&background=3390ec&color=fff'">
+            <img class="call-avatar" src="https://ui-avatars.com/api/?name=${encodeURIComponent(data.fromName)}&background=3390ec&color=fff">
             <div class="call-name">${escapeHtml(data.fromName)}</div>
             <div class="call-status">Входящий звонок...</div>
             <div class="call-controls">
@@ -819,7 +963,7 @@
             currentCall = data.from;
             
         } catch (error) {
-            console.error('Ошибка:', error);
+            console.error('Ошибка принятия звонка:', error);
         }
     }
     
@@ -896,7 +1040,7 @@
                             <div class="chat-header-status" id="chatStatus"></div>
                         </div>
                         <button class="call-btn" id="callBtn">📞</button>
-                        <button class="icon-btn" id="createGroupBtn">👥</button>
+                        <button class="group-btn" id="groupBtn">👥</button>
                     </div>
                     <div class="messages-area" id="messagesArea"></div>
                     <div class="typing-indicator hidden" id="typingIndicator"></div>
@@ -913,18 +1057,22 @@
         `;
         
         document.getElementById('profileBtn')?.addEventListener('click', showProfile);
-        document.getElementById('createGroupBtn')?.addEventListener('click', showCreateGroupModal);
+        document.getElementById('groupBtn')?.addEventListener('click', showCreateGroupModal);
         document.getElementById('attachBtn')?.addEventListener('click', selectPhoto);
         document.getElementById('emojiBtn')?.addEventListener('click', toggleEmojiPicker);
-        document.getElementById('callBtn')?.addEventListener('click', () => {
-            if (currentChat && currentChat.type === 'private') {
-                const otherUserId = currentChat.members.find(id => id !== currentUser.id);
-                const otherUser = users.find(u => u.id === otherUserId);
-                if (otherUser) startCall(otherUserId, otherUser.name);
-            } else {
-                alert('Звонки доступны только в личных чатах');
-            }
-        });
+        
+        const callBtn = document.getElementById('callBtn');
+        if (callBtn) {
+            callBtn.addEventListener('click', () => {
+                if (currentChat && currentChat.type === 'private') {
+                    const otherUserId = currentChat.members?.find(id => id !== currentUser.id);
+                    const otherUser = users.find(u => u.id === otherUserId);
+                    if (otherUser) startCall(otherUserId, otherUser.name);
+                } else {
+                    alert('Звонки доступны только в личных чатах');
+                }
+            });
+        }
         
         const sendBtn = document.getElementById('sendBtn');
         const messageInput = document.getElementById('messageInput');
@@ -998,7 +1146,7 @@
             }
             
             div.innerHTML = `
-                <div class="chat-avatar">${avatar.includes('http') ? `<img src="${avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : avatar}</div>
+                <div class="chat-avatar">${avatar.includes('http') ? `<img src="${avatar}">` : avatar}</div>
                 <div class="chat-info">
                     <div class="chat-name">
                         ${escapeHtml(name)}
@@ -1033,209 +1181,13 @@
             status = `${chat.members?.length || 0} участников`;
         }
         
-        document.getElementById('chatAvatar').src = avatar.includes('http') ? avatar : '';
-        document.getElementById('chatAvatar').style.display = avatar.includes('http') ? 'block' : 'none';
+        const chatAvatar = document.getElementById('chatAvatar');
+        if (chatAvatar) {
+            chatAvatar.src = avatar.includes('http') ? avatar : '';
+            chatAvatar.style.display = avatar.includes('http') ? 'block' : 'none';
+        }
         document.getElementById('chatName').textContent = name;
         document.getElementById('chatStatus').innerHTML = status;
         
         if (window.innerWidth <= 768) {
-            document.getElementById('sidebar').classList.remove('open');
-        }
-        
-        renderMessages();
-    }
-
-    function renderMessages() {
-        const container = document.getElementById('messagesArea');
-        if (!container || !currentChat) return;
-        
-        const chatMessages = messages.filter(m => m.chatId === currentChat.id);
-        container.innerHTML = '';
-        
-        for (const msg of chatMessages) {
-            const isSent = msg.userId === currentUser.id;
-            const div = document.createElement('div');
-            div.className = `message ${isSent ? 'sent' : 'received'}`;
-            
-            let content = '';
-            if (msg.image) {
-                content = `<img src="${msg.image}" class="message-image" onclick="window.open(this.src)">`;
-            } else {
-                content = `<div class="bubble">${escapeHtml(msg.text)}</div>`;
-            }
-            
-            div.innerHTML = `
-                ${!isSent ? `<div class="message-name">${escapeHtml(msg.userName)}</div>` : ''}
-                ${content}
-                <div class="message-info">${formatTime(msg.timestamp)}</div>
-            `;
-            container.appendChild(div);
-        }
-        
-        container.scrollTop = container.scrollHeight;
-    }
-
-    function sendMessage() {
-        const input = document.getElementById('messageInput');
-        const text = input.value.trim();
-        if (!text || !currentChat) return;
-        
-        socket.emit('send message', { 
-            chatId: currentChat.id, 
-            text: text 
-        });
-        input.value = '';
-        socket.emit('typing', { chatId: currentChat.id, isTyping: false });
-    }
-
-    function selectPhoto() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.onchange = (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    socket.emit('send message', { 
-                        chatId: currentChat.id, 
-                        text: '📷 Фото', 
-                        image: reader.result 
-                    });
-                };
-                reader.readAsDataURL(file);
-            }
-        };
-        input.click();
-    }
-
-    function toggleEmojiPicker() {
-        const emojis = ['😀', '😂', '😍', '🥰', '😎', '🔥', '👍', '❤️', '🎉', '✨', '💯', '👋'];
-        const picker = document.createElement('div');
-        picker.style.cssText = 'position:fixed;bottom:80px;left:20px;background:white;border-radius:20px;padding:10px;display:grid;grid-template-columns:repeat(6,1fr);gap:8px;z-index:1000;box-shadow:0 2px 10px rgba(0,0,0,0.1);';
-        emojis.forEach(emoji => {
-            const btn = document.createElement('button');
-            btn.textContent = emoji;
-            btn.style.cssText = 'font-size:28px;background:none;border:none;cursor:pointer;padding:5px;';
-            btn.onclick = () => {
-                const input = document.getElementById('messageInput');
-                input.value += emoji;
-                input.focus();
-                picker.remove();
-            };
-            picker.appendChild(btn);
-        });
-        document.body.appendChild(picker);
-        setTimeout(() => picker.remove(), 5000);
-    }
-
-    function updateChatHeader() {
-        if (currentChat && currentChat.type === 'private') {
-            const otherUser = users.find(u => u.id === currentChat.members?.find(m => m !== currentUser.id));
-            if (otherUser) {
-                const statusEl = document.getElementById('chatStatus');
-                if (statusEl) {
-                    statusEl.innerHTML = otherUser.online ? '<span class="online-dot"></span> Онлайн' : 'Не в сети';
-                }
-            }
-        }
-    }
-
-    function showProfile() {
-        const modal = document.createElement('div');
-        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:2000;';
-        modal.innerHTML = `
-            <div style="background:white;border-radius:24px;padding:32px;width:90%;max-width:380px;text-align:center;">
-                <img src="${currentUser.avatar}" style="width:100px;height:100px;border-radius:50%;margin-bottom:16px;">
-                <div style="font-size:24px;font-weight:600;margin-bottom:8px;">${escapeHtml(currentUser.name)}</div>
-                <div style="color:#65676b;margin-bottom:24px;">${escapeHtml(currentUser.phone)}</div>
-                <button id="logoutBtn" style="background:#e53935;color:white;border:none;padding:12px;border-radius:12px;width:100%;cursor:pointer;">Выйти</button>
-                <button id="closeModal" style="margin-top:12px;background:#f0f2f5;border:none;padding:12px;border-radius:12px;width:100%;cursor:pointer;">Отмена</button>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        
-        document.getElementById('logoutBtn').onclick = () => {
-            localStorage.removeItem('token');
-            localStorage.removeItem('deviceId');
-            if (socket) socket.disconnect();
-            location.reload();
-        };
-        document.getElementById('closeModal').onclick = () => modal.remove();
-    }
-
-    function showNewChatModal() {
-        const otherUsers = users.filter(u => u.id !== currentUser.id);
-        const modal = document.createElement('div');
-        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:2000;';
-        modal.innerHTML = `
-            <div style="background:white;border-radius:24px;padding:24px;width:90%;max-width:380px;">
-                <h3 style="margin-bottom:16px;">Новый чат</h3>
-                <div style="max-height:300px;overflow-y:auto;">
-                    ${otherUsers.map(user => `
-                        <div class="chat-item" data-id="${user.id}" style="padding:12px;cursor:pointer;">
-                            <div class="chat-avatar"><img src="${user.avatar}" style="width:40px;height:40px;border-radius:50%;"></div>
-                            <div class="chat-info">
-                                <div class="chat-name">${escapeHtml(user.name)}</div>
-                                <div class="chat-last-msg">${escapeHtml(user.phone)}</div>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-                <button id="closeModal" style="margin-top:16px;background:#f0f2f5;border:none;padding:12px;border-radius:12px;width:100%;cursor:pointer;">Отмена</button>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        
-        document.querySelectorAll('[data-id]').forEach(el => {
-            el.onclick = async () => {
-                const targetUserId = el.dataset.id;
-                const response = await fetch('/api/create-chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: currentUser.id, targetUserId })
-                });
-                const newChat = await response.json();
-                chats.push(newChat);
-                updateChatsList();
-                selectChat(newChat);
-                modal.remove();
-            };
-        });
-        document.getElementById('closeModal').onclick = () => modal.remove();
-    }
-
-    function showCreateGroupModal() {
-        const modal = document.createElement('div');
-        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:2000;';
-        modal.innerHTML = `
-            <div style="background:white;border-radius:24px;padding:24px;width:90%;max-width:380px;">
-                <h3 style="margin-bottom:16px;">Создать группу</h3>
-                <input type="text" id="groupName" placeholder="Название группы" style="width:100%;padding:12px;margin-bottom:16px;border-radius:12px;border:1px solid #e4e6eb;">
-                <button id="createBtn" style="background:#3390ec;color:white;border:none;padding:12px;border-radius:12px;width:100%;cursor:pointer;">Создать</button>
-                <button id="closeModal" style="margin-top:12px;background:#f0f2f5;border:none;padding:12px;border-radius:12px;width:100%;cursor:pointer;">Отмена</button>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        
-        document.getElementById('createBtn').onclick = async () => {
-            const name = document.getElementById('groupName').value.trim();
-            if (!name) return;
-            const response = await fetch('/api/create-group', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, createdBy: currentUser.id })
-            });
-            const newGroup = await response.json();
-            chats.push(newGroup);
-            updateChatsList();
-            selectChat(newGroup);
-            modal.remove();
-        };
-        document.getElementById('closeModal').onclick = () => modal.remove();
-    }
-
-    checkAuth();
-</script>
-</body>
-</html>
+            document.getElementById
