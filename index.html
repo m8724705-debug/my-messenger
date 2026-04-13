@@ -25,6 +25,7 @@
             margin: 0 auto;
         }
 
+        /* Список чатов */
         .sidebar {
             width: 320px;
             background: white;
@@ -135,6 +136,7 @@
             text-overflow: ellipsis;
         }
 
+        /* Основная область чата */
         .main-chat {
             flex: 1;
             display: flex;
@@ -169,6 +171,7 @@
             color: #65676b;
         }
 
+        /* Сообщения */
         .messages-area {
             flex: 1;
             overflow-y: auto;
@@ -243,6 +246,7 @@
             color: #3390ec;
         }
 
+        /* Ввод сообщения */
         .input-area {
             background: white;
             padding: 12px 20px;
@@ -302,6 +306,7 @@
             font-size: 20px;
         }
 
+        /* Экран входа */
         .login-screen {
             background: white;
             width: 100%;
@@ -400,18 +405,14 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-    // ========== ПЕРЕМЕННЫЕ ==========
     let token = localStorage.getItem('token');
     let deviceId = localStorage.getItem('deviceId');
     let currentUser = null;
     let socket = null;
     let messages = [];
     let users = [];
-    let chats = [];
     let currentChat = null;
-    let pendingMessages = new Set(); // Для предотвращения дублирования
 
-    // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
     function getDeviceId() {
         if (!deviceId) {
             deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 16);
@@ -444,7 +445,7 @@
             if (response.ok) {
                 const data = await response.json();
                 currentUser = data.user;
-                await loadData();
+                await loadUsers();
                 connectWebSocket();
                 showMainApp();
             } else {
@@ -454,16 +455,13 @@
         } catch(e) { showLogin(); }
     }
 
-    async function loadData() {
+    async function loadUsers() {
         try {
-            const [usersRes, chatsRes] = await Promise.all([
-                fetch('/api/users'),
-                fetch('/api/chats?userId=' + currentUser.id)
-            ]);
-            users = await usersRes.json();
-            chats = await chatsRes.json();
+            const response = await fetch('/api/users');
+            users = await response.json();
+            console.log('Загружено пользователей:', users.length);
         } catch(e) {
-            console.error('Ошибка загрузки:', e);
+            console.error('Ошибка загрузки пользователей:', e);
         }
     }
 
@@ -498,7 +496,7 @@
                     localStorage.setItem('token', data.token);
                     token = data.token;
                     currentUser = data.user;
-                    await loadData();
+                    await loadUsers();
                     connectWebSocket();
                     showMainApp();
                 } else {
@@ -513,6 +511,7 @@
     // ========== WEBSOCKET ==========
     function connectWebSocket() {
         socket = io();
+        
         socket.on('connect', () => {
             console.log('WebSocket подключен');
             socket.emit('auth', currentUser.id);
@@ -524,7 +523,6 @@
         });
         
         socket.on('new message', (message) => {
-            // Проверяем, нет ли уже такого сообщения
             const exists = messages.some(m => m.id === message.id);
             if (!exists) {
                 messages.push(message);
@@ -537,6 +535,7 @@
         
         socket.on('users list', (updatedUsers) => {
             users = updatedUsers;
+            console.log('Обновлён список пользователей:', users.length);
             updateChatsList();
         });
         
@@ -637,10 +636,13 @@
         const container = document.getElementById('chatsList');
         if (!container) return;
         
+        // Показываем ВСЕХ пользователей, кроме текущего
         const otherUsers = users.filter(u => u.id !== currentUser?.id);
         
+        console.log('Другие пользователи:', otherUsers.length);
+        
         if (otherUsers.length === 0) {
-            container.innerHTML = '<div style="padding:20px;color:#65676b;text-align:center;">Нет других пользователей</div>';
+            container.innerHTML = '<div style="padding:20px;color:#65676b;text-align:center;">Нет других пользователей<br><br>Пригласите друзей по ссылке!</div>';
             return;
         }
         
@@ -653,11 +655,11 @@
                 <img src="${user.avatar}" class="chat-avatar">
                 <div class="chat-info">
                     <div class="chat-name">${escapeHtml(user.name)}</div>
-                    <div class="chat-last-msg">${user.online ? 'Онлайн' : user.phone}</div>
+                    <div class="chat-last-msg">${user.online ? '🟢 Онлайн' : '⚫ Не в сети'}</div>
                 </div>
             `;
             div.onclick = () => {
-                const chat = { id: user.id, name: user.name, avatar: user.avatar, members: [currentUser.id, user.id] };
+                const chat = { id: user.id, name: user.name, avatar: user.avatar };
                 selectChat(chat);
                 if (window.innerWidth <= 768) {
                     document.getElementById('sidebar').classList.remove('open');
@@ -726,7 +728,7 @@
         }
     }
 
-    // ========== ОТПРАВКА СООБЩЕНИЙ (БЕЗ ДУБЛИРОВАНИЯ) ==========
+    // ========== ОТПРАВКА ==========
     function sendMessage() {
         const input = document.getElementById('messageInput');
         const text = input.value.trim();
@@ -734,7 +736,6 @@
         
         const messageId = Date.now().toString() + '_' + Math.random().toString(36).substr(2, 6);
         
-        // Добавляем сообщение сразу в UI (оптимистичное обновление)
         const tempMessage = {
             id: messageId,
             chatId: currentChat.id,
@@ -743,24 +744,20 @@
             userAvatar: currentUser.avatar,
             text: text,
             image: null,
-            timestamp: Date.now(),
-            pending: true
+            timestamp: Date.now()
         };
         
         messages.push(tempMessage);
         renderMessages();
         
-        // Отправляем на сервер
         socket.emit('send message', { 
             chatId: currentChat.id, 
-            text: text,
-            tempId: messageId
+            text: text
         });
         
         input.value = '';
     }
 
-    // ========== ОТПРАВКА ФОТО (БЕЗ ДУБЛИРОВАНИЯ) ==========
     function selectPhoto() {
         const input = document.createElement('input');
         input.type = 'file';
@@ -774,7 +771,6 @@
                 const imageData = event.target.result;
                 const messageId = Date.now().toString() + '_' + Math.random().toString(36).substr(2, 6);
                 
-                // Добавляем фото сразу в UI
                 const tempMessage = {
                     id: messageId,
                     chatId: currentChat.id,
@@ -783,18 +779,15 @@
                     userAvatar: currentUser.avatar,
                     text: '📷 Фото',
                     image: imageData,
-                    timestamp: Date.now(),
-                    pending: true
+                    timestamp: Date.now()
                 };
                 messages.push(tempMessage);
                 renderMessages();
                 
-                // Отправляем на сервер
                 socket.emit('send message', { 
                     chatId: currentChat.id, 
                     text: '📷 Фото', 
-                    image: imageData,
-                    tempId: messageId
+                    image: imageData
                 });
             };
             reader.readAsDataURL(file);
@@ -825,7 +818,6 @@
         document.getElementById('closeModal').onclick = () => modal.remove();
     }
 
-    // Запуск
     checkAuth();
 </script>
 </body>
