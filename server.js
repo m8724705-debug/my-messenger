@@ -7,7 +7,6 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
-// Хранилище данных
 let users = [];
 let messages = [];
 let onlineUsers = new Map();
@@ -19,12 +18,9 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Регистрация/вход
 app.post('/api/login', (req, res) => {
     const { phone, name, deviceId } = req.body;
-    
     let user = users.find(u => u.phone === phone || u.deviceId === deviceId);
-    
     if (!user) {
         user = {
             id: Date.now().toString(),
@@ -36,11 +32,9 @@ app.post('/api/login', (req, res) => {
         };
         users.push(user);
     }
-    
     res.json({ token: user.id, user });
 });
 
-// Проверка токена
 app.post('/api/verify', (req, res) => {
     const { token } = req.body;
     const user = users.find(u => u.id === token);
@@ -48,7 +42,6 @@ app.post('/api/verify', (req, res) => {
     res.json({ user });
 });
 
-// Получение всех пользователей
 app.get('/api/users', (req, res) => {
     res.json(users.map(u => ({
         id: u.id,
@@ -59,7 +52,6 @@ app.get('/api/users', (req, res) => {
     })));
 });
 
-// Получение чатов
 app.get('/api/chats', (req, res) => {
     const userId = req.query.userId;
     const otherUsers = users.filter(u => u.id !== userId);
@@ -75,7 +67,6 @@ app.get('/api/chats', (req, res) => {
     res.json(chats);
 });
 
-// Создание чата
 app.post('/api/create-chat', (req, res) => {
     const { userId, targetUserId } = req.body;
     const targetUser = users.find(u => u.id === targetUserId);
@@ -88,7 +79,6 @@ app.post('/api/create-chat', (req, res) => {
     });
 });
 
-// WebSocket
 io.on('connection', (socket) => {
     console.log('✅ Клиент подключился');
     let currentUserId = null;
@@ -96,8 +86,6 @@ io.on('connection', (socket) => {
     socket.on('auth', (userId) => {
         currentUserId = userId;
         onlineUsers.set(userId, socket.id);
-        console.log('👤 Авторизован:', userId);
-        
         socket.emit('chat history', messages);
         io.emit('users online', Array.from(onlineUsers.keys()));
         io.emit('users list', users);
@@ -122,25 +110,17 @@ io.on('connection', (socket) => {
         if (messages.length > 500) messages = messages.slice(-500);
         
         io.emit('new message', message);
-        console.log('📨 Сообщение отправлено');
     });
     
     socket.on('disconnect', () => {
         if (currentUserId) {
             onlineUsers.delete(currentUserId);
             io.emit('users online', Array.from(onlineUsers.keys()));
-            console.log('❌ Пользователь отключился');
         }
     });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`
-    ╔════════════════════════════════════════════╗
-    ║     ✅ VANOGRAM ЗАПУЩЕН!                   ║
-    ╠════════════════════════════════════════════╣
-    ║  📱 Откройте: http://localhost:${PORT}      ║
-    ╚════════════════════════════════════════════╝
-    `);
+    console.log(`✅ Vanogram запущен на порту ${PORT}`);
 });
