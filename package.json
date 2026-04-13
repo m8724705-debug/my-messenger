@@ -1,7 +1,7 @@
 {
-  "name": "my-messenger",
+  "name": "vanogram",
   "version": "1.0.0",
-  "description": "Простой мессенджер с друзьями",
+  "description": "Мессенджер с фото",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -9,8 +9,5 @@
   "dependencies": {
     "express": "^4.18.2",
     "socket.io": "^4.5.4"
-  },
-  "engines": {
-    "node": "18.x"
   }
 }
