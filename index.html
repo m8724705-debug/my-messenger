@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Vanogram | Мессенджер</title>
+    <title>Vanogram Pro | Мессенджер со звонками</title>
     <style>
         * {
             margin: 0;
@@ -11,7 +11,6 @@
             box-sizing: border-box;
         }
 
-        /* СВЕТЛАЯ ТЕМА КАК В TELEGRAM */
         :root {
             --bg-primary: #ffffff;
             --bg-secondary: #f0f2f5;
@@ -22,7 +21,6 @@
             --text-secondary: #65676b;
             --border-color: #e4e6eb;
             --accent-color: #3390ec;
-            --accent-hover: #2a7bc8;
             --online-color: #31a24c;
         }
 
@@ -33,7 +31,6 @@
             overflow: hidden;
         }
 
-        /* Основной контейнер */
         .app {
             display: flex;
             height: 100vh;
@@ -41,7 +38,7 @@
             margin: 0 auto;
         }
 
-        /* Боковая панель (список чатов) */
+        /* Боковая панель */
         .sidebar {
             width: 360px;
             background: var(--bg-primary);
@@ -51,7 +48,6 @@
             flex-shrink: 0;
         }
 
-        /* Шапка боковой панели */
         .sidebar-header {
             padding: 20px 16px;
             background: var(--bg-header);
@@ -181,16 +177,6 @@
             color: var(--text-secondary);
         }
 
-        .unread-badge {
-            background: var(--accent-color);
-            color: white;
-            font-size: 12px;
-            padding: 2px 8px;
-            border-radius: 16px;
-            min-width: 20px;
-            text-align: center;
-        }
-
         /* Основная область чата */
         .main-chat {
             flex: 1;
@@ -230,6 +216,17 @@
             color: var(--text-secondary);
         }
 
+        .call-btn {
+            background: var(--accent-color);
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            color: white;
+        }
+
         /* Сообщения */
         .messages-area {
             flex: 1;
@@ -245,7 +242,6 @@
             flex-direction: column;
             max-width: 65%;
             animation: fadeIn 0.2s ease;
-            position: relative;
         }
 
         @keyframes fadeIn {
@@ -267,7 +263,6 @@
             font-size: 15px;
             line-height: 1.4;
             word-wrap: break-word;
-            position: relative;
         }
 
         .sent .bubble {
@@ -284,8 +279,8 @@
         }
 
         .message-image {
-            max-width: 250px;
-            max-height: 250px;
+            max-width: 200px;
+            max-height: 200px;
             border-radius: 12px;
             cursor: pointer;
         }
@@ -294,13 +289,10 @@
             font-size: 11px;
             color: var(--text-secondary);
             margin: 4px 8px 0;
-            display: flex;
-            gap: 8px;
-            align-items: center;
         }
 
         .sent .message-info {
-            justify-content: flex-end;
+            text-align: right;
         }
 
         .message-name {
@@ -308,31 +300,6 @@
             font-size: 13px;
             margin-bottom: 4px;
             color: var(--accent-color);
-        }
-
-        /* Контекстное меню */
-        .message-menu {
-            position: absolute;
-            right: -30px;
-            top: 5px;
-            background: var(--bg-primary);
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            display: none;
-            z-index: 10;
-        }
-
-        .message:hover .message-menu {
-            display: flex;
-        }
-
-        .menu-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 18px;
-            padding: 4px 8px;
-            color: var(--text-secondary);
         }
 
         /* Индикатор печатания */
@@ -388,10 +355,6 @@
             outline: none;
         }
 
-        #messageInput::placeholder {
-            color: var(--text-secondary);
-        }
-
         #sendBtn {
             background: var(--accent-color);
             border: none;
@@ -401,11 +364,69 @@
             border-radius: 50%;
             cursor: pointer;
             font-size: 20px;
-            transition: transform 0.1s;
         }
 
-        #sendBtn:active {
-            transform: scale(0.95);
+        /* Экран звонка */
+        .call-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #1a1a2e;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .call-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            margin-bottom: 20px;
+        }
+
+        .call-name {
+            color: white;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .call-status {
+            color: #aaa;
+            font-size: 14px;
+            margin-bottom: 40px;
+        }
+
+        .call-controls {
+            display: flex;
+            gap: 30px;
+        }
+
+        .call-control {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+        }
+
+        .accept-call {
+            background: #31a24c;
+            color: white;
+        }
+
+        .end-call {
+            background: #e53935;
+            color: white;
+        }
+
+        .hidden {
+            display: none;
         }
 
         /* Экран входа */
@@ -425,18 +446,12 @@
             font-size: 36px;
         }
 
-        .login-screen p {
-            color: var(--text-secondary);
-            margin-bottom: 32px;
-        }
-
         .login-screen input {
             width: 100%;
             padding: 16px;
             background: var(--bg-secondary);
             border: none;
             border-radius: 16px;
-            color: var(--text-primary);
             font-size: 16px;
             margin-bottom: 16px;
             text-align: center;
@@ -454,75 +469,11 @@
             cursor: pointer;
         }
 
-        .error {
-            color: #e53935;
-            font-size: 13px;
-            margin-top: 12px;
-        }
-
-        /* Профиль */
-        .profile-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-        }
-
-        .profile-content {
-            background: var(--bg-primary);
-            border-radius: 24px;
-            padding: 32px;
-            width: 90%;
-            max-width: 380px;
-            text-align: center;
-        }
-
-        .profile-avatar {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            margin-bottom: 16px;
-        }
-
-        .profile-name {
-            font-size: 24px;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .profile-phone {
-            color: var(--text-secondary);
-            margin-bottom: 24px;
-        }
-
-        .logout-btn {
-            background: #e53935;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            width: 100%;
-        }
-
-        .close-modal {
-            background: var(--bg-secondary);
-            margin-top: 12px;
-        }
-
-        .hidden {
+        /* Мобильное меню */
+        .menu-btn-mobile {
             display: none;
         }
 
-        /* Адаптив для телефона */
         @media (max-width: 768px) {
             .sidebar {
                 position: fixed;
@@ -556,10 +507,6 @@
                 max-width: 85%;
             }
         }
-
-        .menu-btn-mobile {
-            display: none;
-        }
     </style>
 </head>
 <body>
@@ -570,6 +517,7 @@
 <script>
     // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
     let token = localStorage.getItem('token');
+    let deviceId = localStorage.getItem('deviceId');
     let currentUser = null;
     let socket = null;
     let messages = [];
@@ -577,6 +525,19 @@
     let chats = [];
     let currentChat = null;
     let searchQuery = '';
+    
+    // WebRTC для звонков
+    let peerConnection = null;
+    let localStream = null;
+    let currentCall = null;
+    let callInterval = null;
+    
+    const configuration = {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+        ]
+    };
 
     // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
     function escapeHtml(text) {
@@ -595,19 +556,15 @@
         return date.toLocaleDateString();
     }
 
-    function formatLastSeen(timestamp) {
-        if (!timestamp) return 'был(а) недавно';
-        const date = new Date(timestamp);
-        const now = new Date();
-        const diff = Math.floor((now - date) / 1000 / 60);
-        
-        if (diff < 1) return 'только что';
-        if (diff < 60) return `${diff} мин назад`;
-        if (diff < 1440) return `${Math.floor(diff / 60)} ч назад`;
-        return date.toLocaleDateString();
+    function getDeviceId() {
+        if (!deviceId) {
+            deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 16);
+            localStorage.setItem('deviceId', deviceId);
+        }
+        return deviceId;
     }
 
-    // ========== АВТОРИЗАЦИЯ ==========
+    // ========== АВТОРИЗАЦИЯ (ОДИН РАЗ НА УСТРОЙСТВЕ) ==========
     async function checkAuth() {
         if (!token) { showLogin(); return; }
         try {
@@ -642,15 +599,16 @@
         document.getElementById('app').innerHTML = `
             <div style="display:flex;justify-content:center;align-items:center;height:100vh;background:var(--bg-secondary);">
                 <div class="login-screen">
-                    <h1>📱 Vanogram</h1>
-                    <p>Войдите в мессенджер</p>
-                    <input type="tel" id="phone" placeholder="Номер телефона" value="+7">
+                    <h1>📱 Vanogram Pro</h1>
+                    <p>Введите номер телефона</p>
+                    <input type="tel" id="phone" placeholder="+7 XXX XXX XX XX" value="+7">
                     <input type="text" id="name" placeholder="Ваше имя">
                     <button id="loginBtn">Продолжить</button>
-                    <div class="error" id="errorMsg"></div>
+                    <div class="error" id="errorMsg" style="color:#e53935;margin-top:12px;"></div>
                 </div>
             </div>
         `;
+        
         document.getElementById('loginBtn').onclick = async () => {
             const phone = document.getElementById('phone').value.trim();
             const name = document.getElementById('name').value.trim();
@@ -659,10 +617,10 @@
                 return;
             }
             try {
-                const response = await fetch('/api/login', {
+                const response = await fetch('/api/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone, name })
+                    body: JSON.stringify({ phone, name, deviceId: getDeviceId() })
                 });
                 const data = await response.json();
                 if (response.ok) {
@@ -683,8 +641,18 @@
 
     // ========== WEBSOCKET ==========
     function connectWebSocket() {
-        socket = io();
-        socket.on('connect', () => socket.emit('auth', currentUser.id));
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}`;
+        
+        socket = io(wsUrl, {
+            transports: ['websocket', 'polling'],
+            reconnection: true
+        });
+        
+        socket.on('connect', () => {
+            console.log('✅ WebSocket подключен');
+            socket.emit('auth', currentUser.id);
+        });
         
         socket.on('chat history', (history) => {
             messages = history;
@@ -697,12 +665,6 @@
                 renderMessages();
             }
             updateChatsList();
-        });
-        
-        socket.on('message sent', (message) => {
-            if (currentChat && message.chatId === currentChat.id) {
-                renderMessages();
-            }
         });
         
         socket.on('users list', (updatedUsers) => {
@@ -735,32 +697,177 @@
             }
         });
         
-        socket.on('message edited', (data) => {
-            const msg = messages.find(m => m.id === data.messageId);
-            if (msg) {
-                msg.text = data.newText;
-                msg.edited = true;
-                if (currentChat && data.chatId === currentChat.id) renderMessages();
+        // ========== ЗВОНКИ ==========
+        socket.on('incoming call', async (data) => {
+            showIncomingCall(data);
+        });
+        
+        socket.on('call answered', async (data) => {
+            if (peerConnection) {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+            }
+            updateCallStatus('В разговоре...');
+        });
+        
+        socket.on('ice candidate', async (data) => {
+            if (peerConnection) {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
             }
         });
         
-        socket.on('message deleted', (data) => {
-            const index = messages.findIndex(m => m.id === data.messageId);
-            if (index !== -1) {
-                messages.splice(index, 1);
-                if (currentChat && data.chatId === currentChat.id) renderMessages();
-                updateChatsList();
-            }
+        socket.on('call ended', () => {
+            endCall();
+            alert('Звонок завершён');
         });
+        
+        socket.on('call error', (data) => {
+            alert(data.message);
+        });
+    }
+
+    // ========== ФУНКЦИИ ЗВОНКОВ ==========
+    async function startCall(targetUserId, targetName) {
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
+            peerConnection = new RTCPeerConnection(configuration);
+            
+            localStream.getTracks().forEach(track => {
+                peerConnection.addTrack(track, localStream);
+            });
+            
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('ice candidate', {
+                        targetUserId: targetUserId,
+                        candidate: event.candidate
+                    });
+                }
+            };
+            
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            
+            socket.emit('call user', {
+                targetUserId: targetUserId,
+                offer: offer
+            });
+            
+            showCallUI(targetName, 'Вызов...');
+            currentCall = targetUserId;
+            
+        } catch (error) {
+            console.error('Ошибка звонка:', error);
+            alert('Не удалось получить доступ к микрофону');
+        }
+    }
+    
+    function showIncomingCall(data) {
+        const modal = document.createElement('div');
+        modal.className = 'call-modal';
+        modal.id = 'incomingCallModal';
+        modal.innerHTML = `
+            <img src="${data.fromName}" class="call-avatar" onerror="this.src='https://ui-avatars.com/api/?name=${data.fromName}&background=3390ec&color=fff'">
+            <div class="call-name">${escapeHtml(data.fromName)}</div>
+            <div class="call-status">Входящий звонок...</div>
+            <div class="call-controls">
+                <button class="call-control accept-call" id="acceptCall">📞</button>
+                <button class="call-control end-call" id="rejectCall">❌</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        document.getElementById('acceptCall').onclick = () => acceptCall(data);
+        document.getElementById('rejectCall').onclick = () => {
+            modal.remove();
+            socket.emit('end call', { targetUserId: data.from });
+        };
+    }
+    
+    async function acceptCall(data) {
+        document.getElementById('incomingCallModal')?.remove();
+        
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
+            peerConnection = new RTCPeerConnection(configuration);
+            
+            localStream.getTracks().forEach(track => {
+                peerConnection.addTrack(track, localStream);
+            });
+            
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('ice candidate', {
+                        targetUserId: data.from,
+                        candidate: event.candidate
+                    });
+                }
+            };
+            
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+            
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            
+            socket.emit('answer call', {
+                targetUserId: data.from,
+                answer: answer
+            });
+            
+            showCallUI(data.fromName, 'Соединение...');
+            currentCall = data.from;
+            
+        } catch (error) {
+            console.error('Ошибка:', error);
+        }
+    }
+    
+    function showCallUI(name, status) {
+        const modal = document.createElement('div');
+        modal.className = 'call-modal';
+        modal.id = 'callModal';
+        modal.innerHTML = `
+            <div class="call-name">${escapeHtml(name)}</div>
+            <div class="call-status" id="callStatus">${status}</div>
+            <div class="call-controls">
+                <button class="call-control end-call" id="endCallBtn">❌</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        document.getElementById('endCallBtn').onclick = () => {
+            if (currentCall) {
+                socket.emit('end call', { targetUserId: currentCall });
+            }
+            endCall();
+        };
+    }
+    
+    function updateCallStatus(status) {
+        const statusEl = document.getElementById('callStatus');
+        if (statusEl) statusEl.textContent = status;
+    }
+    
+    function endCall() {
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+            localStream = null;
+        }
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+        }
+        document.getElementById('callModal')?.remove();
+        document.getElementById('incomingCallModal')?.remove();
+        currentCall = null;
     }
 
     // ========== ОТОБРАЖЕНИЕ ==========
     function showMainApp() {
         renderMainApp();
         updateChatsList();
-        if (currentChat) {
-            selectChat(currentChat);
-        }
+        if (currentChat) selectChat(currentChat);
     }
 
     function renderMainApp() {
@@ -788,6 +895,7 @@
                             <div class="chat-header-name" id="chatName"></div>
                             <div class="chat-header-status" id="chatStatus"></div>
                         </div>
+                        <button class="call-btn" id="callBtn">📞</button>
                         <button class="icon-btn" id="createGroupBtn">👥</button>
                     </div>
                     <div class="messages-area" id="messagesArea"></div>
@@ -804,34 +912,20 @@
             </div>
         `;
         
-        // Обновление статуса пользователя
-        const userStatus = document.getElementById('userStatus');
-        if (userStatus) {
-            userStatus.innerHTML = '<span class="online-dot"></span> Онлайн';
-        }
-        
-        // Поиск
-        const searchInput = document.getElementById('searchInput');
-        if (searchInput) {
-            searchInput.oninput = (e) => {
-                searchQuery = e.target.value.toLowerCase();
-                updateChatsList();
-            };
-        }
-        
-        // Кнопка профиля
         document.getElementById('profileBtn')?.addEventListener('click', showProfile);
-        
-        // Кнопка создания группы
         document.getElementById('createGroupBtn')?.addEventListener('click', showCreateGroupModal);
-        
-        // Кнопка вложения
-        document.getElementById('attachBtn')?.addEventListener('click', () => selectPhoto());
-        
-        // Кнопка эмодзи
+        document.getElementById('attachBtn')?.addEventListener('click', selectPhoto);
         document.getElementById('emojiBtn')?.addEventListener('click', toggleEmojiPicker);
+        document.getElementById('callBtn')?.addEventListener('click', () => {
+            if (currentChat && currentChat.type === 'private') {
+                const otherUserId = currentChat.members.find(id => id !== currentUser.id);
+                const otherUser = users.find(u => u.id === otherUserId);
+                if (otherUser) startCall(otherUserId, otherUser.name);
+            } else {
+                alert('Звонки доступны только в личных чатах');
+            }
+        });
         
-        // Отправка сообщения
         const sendBtn = document.getElementById('sendBtn');
         const messageInput = document.getElementById('messageInput');
         
@@ -851,25 +945,33 @@
             };
         }
         
-        // Меню для телефона
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.oninput = (e) => {
+                searchQuery = e.target.value.toLowerCase();
+                updateChatsList();
+            };
+        }
+        
         const menuBtn = document.getElementById('menuBtn');
         if (menuBtn) {
             menuBtn.onclick = () => {
                 document.getElementById('sidebar').classList.toggle('open');
             };
         }
+        
+        const userStatus = document.getElementById('userStatus');
+        if (userStatus) userStatus.innerHTML = '<span class="online-dot"></span> Онлайн';
     }
 
     function updateChatsList() {
         const container = document.getElementById('chatsList');
         if (!container) return;
         
-        // Фильтруем чаты по поиску
         let filteredChats = chats.filter(chat => 
             chat.name.toLowerCase().includes(searchQuery)
         );
         
-        // Сортируем по времени последнего сообщения
         filteredChats.sort((a, b) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
         
         container.innerHTML = '';
@@ -884,7 +986,6 @@
             const div = document.createElement('div');
             div.className = `chat-item ${currentChat?.id === chat.id ? 'active' : ''}`;
             
-            // Определяем аватар и имя
             let avatar = chat.avatar;
             let name = chat.name;
             
@@ -905,7 +1006,6 @@
                     </div>
                     <div class="chat-last-msg">${escapeHtml(chat.lastMessage?.substring(0, 40) || 'Нет сообщений')}</div>
                 </div>
-                ${chat.unread ? `<div class="unread-badge">${chat.unread}</div>` : ''}
             `;
             div.onclick = () => selectChat(chat);
             container.appendChild(div);
@@ -915,11 +1015,9 @@
     function selectChat(chat) {
         currentChat = chat;
         
-        // Показываем шапку чата
         document.getElementById('chatHeader').style.display = 'flex';
         document.getElementById('inputArea').style.display = 'flex';
         
-        // Определяем аватар и имя
         let avatar = chat.avatar;
         let name = chat.name;
         let status = '';
@@ -929,11 +1027,7 @@
             if (otherUser) {
                 avatar = otherUser.avatar;
                 name = otherUser.name;
-                if (otherUser.online) {
-                    status = '<span class="online-dot"></span> Онлайн';
-                } else {
-                    status = `был(а) ${formatLastSeen(otherUser.lastSeen)}`;
-                }
+                status = otherUser.online ? '<span class="online-dot"></span> Онлайн' : 'Не в сети';
             }
         } else {
             status = `${chat.members?.length || 0} участников`;
@@ -944,7 +1038,6 @@
         document.getElementById('chatName').textContent = name;
         document.getElementById('chatStatus').innerHTML = status;
         
-        // Закрываем меню на телефоне
         if (window.innerWidth <= 768) {
             document.getElementById('sidebar').classList.remove('open');
         }
@@ -963,27 +1056,18 @@
             const isSent = msg.userId === currentUser.id;
             const div = document.createElement('div');
             div.className = `message ${isSent ? 'sent' : 'received'}`;
-            div.dataset.id = msg.id;
             
             let content = '';
             if (msg.image) {
                 content = `<img src="${msg.image}" class="message-image" onclick="window.open(this.src)">`;
             } else {
-                content = `<div class="bubble">${escapeHtml(msg.text)}${msg.edited ? ' <span style="font-size:10px;">(ред.)</span>' : ''}</div>`;
+                content = `<div class="bubble">${escapeHtml(msg.text)}</div>`;
             }
             
             div.innerHTML = `
                 ${!isSent ? `<div class="message-name">${escapeHtml(msg.userName)}</div>` : ''}
                 ${content}
-                <div class="message-info">
-                    <span>${formatTime(msg.timestamp)}</span>
-                    ${isSent ? (msg.readBy?.length > 1 ? '✓✓' : '✓') : ''}
-                </div>
-                <div class="message-menu">
-                    <button class="menu-btn" onclick="editMessage('${msg.id}')">✏️</button>
-                    <button class="menu-btn" onclick="deleteMessage('${msg.id}')">🗑️</button>
-                    <button class="menu-btn" onclick="replyToMessage('${msg.id}')">↩️</button>
-                </div>
+                <div class="message-info">${formatTime(msg.timestamp)}</div>
             `;
             container.appendChild(div);
         }
@@ -1026,7 +1110,6 @@
     }
 
     function toggleEmojiPicker() {
-        // Простая эмодзи панель
         const emojis = ['😀', '😂', '😍', '🥰', '😎', '🔥', '👍', '❤️', '🎉', '✨', '💯', '👋'];
         const picker = document.createElement('div');
         picker.style.cssText = 'position:fixed;bottom:80px;left:20px;background:white;border-radius:20px;padding:10px;display:grid;grid-template-columns:repeat(6,1fr);gap:8px;z-index:1000;box-shadow:0 2px 10px rgba(0,0,0,0.1);';
@@ -1046,109 +1129,35 @@
         setTimeout(() => picker.remove(), 5000);
     }
 
-    function editMessage(messageId) {
-        const newText = prompt('Редактировать сообщение:');
-        if (newText && newText.trim()) {
-            socket.emit('edit message', { messageId, newText: newText.trim() });
-        }
-    }
-
-    function deleteMessage(messageId) {
-        if (confirm('Удалить сообщение?')) {
-            socket.emit('delete message', { messageId });
-        }
-    }
-
-    function replyToMessage(messageId) {
-        const msg = messages.find(m => m.id === messageId);
-        if (msg) {
-            const input = document.getElementById('messageInput');
-            input.value = `↩️ ${msg.userName}: ${msg.text.substring(0, 50)}...\n`;
-            input.focus();
-        }
-    }
-
     function updateChatHeader() {
         if (currentChat && currentChat.type === 'private') {
             const otherUser = users.find(u => u.id === currentChat.members?.find(m => m !== currentUser.id));
             if (otherUser) {
                 const statusEl = document.getElementById('chatStatus');
                 if (statusEl) {
-                    if (otherUser.online) {
-                        statusEl.innerHTML = '<span class="online-dot"></span> Онлайн';
-                    } else {
-                        statusEl.innerHTML = `был(а) ${formatLastSeen(otherUser.lastSeen)}`;
-                    }
+                    statusEl.innerHTML = otherUser.online ? '<span class="online-dot"></span> Онлайн' : 'Не в сети';
                 }
             }
-        }
-    }
-
-    function updateChatsList() {
-        const container = document.getElementById('chatsList');
-        if (!container) return;
-        
-        let filteredChats = chats.filter(chat => 
-            chat.name.toLowerCase().includes(searchQuery)
-        );
-        
-        filteredChats.sort((a, b) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
-        
-        container.innerHTML = '';
-        
-        if (filteredChats.length === 0) {
-            container.innerHTML = '<div style="padding:20px;color:var(--text-secondary);text-align:center;">Нет чатов<br><button class="icon-btn" id="newChatBtn" style="margin-top:10px;">➕ Создать чат</button></div>';
-            document.getElementById('newChatBtn')?.addEventListener('click', showNewChatModal);
-            return;
-        }
-        
-        for (const chat of filteredChats) {
-            const div = document.createElement('div');
-            div.className = `chat-item ${currentChat?.id === chat.id ? 'active' : ''}`;
-            
-            let avatar = chat.avatar;
-            let name = chat.name;
-            
-            if (chat.type === 'private') {
-                const otherUser = users.find(u => u.id === chat.members?.find(m => m !== currentUser.id));
-                if (otherUser) {
-                    avatar = otherUser.avatar;
-                    name = otherUser.name;
-                }
-            }
-            
-            div.innerHTML = `
-                <div class="chat-avatar">${avatar.includes('http') ? `<img src="${avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : avatar}</div>
-                <div class="chat-info">
-                    <div class="chat-name">
-                        ${escapeHtml(name)}
-                        <div class="chat-time">${chat.lastMessageTime ? formatTime(chat.lastMessageTime) : ''}</div>
-                    </div>
-                    <div class="chat-last-msg">${escapeHtml(chat.lastMessage?.substring(0, 40) || 'Нет сообщений')}</div>
-                </div>
-                ${chat.unread ? `<div class="unread-badge">${chat.unread}</div>` : ''}
-            `;
-            div.onclick = () => selectChat(chat);
-            container.appendChild(div);
         }
     }
 
     function showProfile() {
         const modal = document.createElement('div');
-        modal.className = 'profile-modal';
+        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:2000;';
         modal.innerHTML = `
-            <div class="profile-content">
-                <img src="${currentUser.avatar}" class="profile-avatar">
-                <div class="profile-name">${escapeHtml(currentUser.name)}</div>
-                <div class="profile-phone">${escapeHtml(currentUser.phone)}</div>
-                <button class="logout-btn" id="logoutBtn">Выйти из аккаунта</button>
-                <button class="close-modal" id="closeModal">Отмена</button>
+            <div style="background:white;border-radius:24px;padding:32px;width:90%;max-width:380px;text-align:center;">
+                <img src="${currentUser.avatar}" style="width:100px;height:100px;border-radius:50%;margin-bottom:16px;">
+                <div style="font-size:24px;font-weight:600;margin-bottom:8px;">${escapeHtml(currentUser.name)}</div>
+                <div style="color:#65676b;margin-bottom:24px;">${escapeHtml(currentUser.phone)}</div>
+                <button id="logoutBtn" style="background:#e53935;color:white;border:none;padding:12px;border-radius:12px;width:100%;cursor:pointer;">Выйти</button>
+                <button id="closeModal" style="margin-top:12px;background:#f0f2f5;border:none;padding:12px;border-radius:12px;width:100%;cursor:pointer;">Отмена</button>
             </div>
         `;
         document.body.appendChild(modal);
         
         document.getElementById('logoutBtn').onclick = () => {
             localStorage.removeItem('token');
+            localStorage.removeItem('deviceId');
             if (socket) socket.disconnect();
             location.reload();
         };
@@ -1158,13 +1167,13 @@
     function showNewChatModal() {
         const otherUsers = users.filter(u => u.id !== currentUser.id);
         const modal = document.createElement('div');
-        modal.className = 'profile-modal';
+        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:2000;';
         modal.innerHTML = `
-            <div class="profile-content">
+            <div style="background:white;border-radius:24px;padding:24px;width:90%;max-width:380px;">
                 <h3 style="margin-bottom:16px;">Новый чат</h3>
                 <div style="max-height:300px;overflow-y:auto;">
                     ${otherUsers.map(user => `
-                        <div class="chat-item" data-id="${user.id}" style="padding:12px;">
+                        <div class="chat-item" data-id="${user.id}" style="padding:12px;cursor:pointer;">
                             <div class="chat-avatar"><img src="${user.avatar}" style="width:40px;height:40px;border-radius:50%;"></div>
                             <div class="chat-info">
                                 <div class="chat-name">${escapeHtml(user.name)}</div>
@@ -1173,7 +1182,7 @@
                         </div>
                     `).join('')}
                 </div>
-                <button class="close-modal" id="closeModal">Отмена</button>
+                <button id="closeModal" style="margin-top:16px;background:#f0f2f5;border:none;padding:12px;border-radius:12px;width:100%;cursor:pointer;">Отмена</button>
             </div>
         `;
         document.body.appendChild(modal);
@@ -1198,13 +1207,13 @@
 
     function showCreateGroupModal() {
         const modal = document.createElement('div');
-        modal.className = 'profile-modal';
+        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:2000;';
         modal.innerHTML = `
-            <div class="profile-content">
+            <div style="background:white;border-radius:24px;padding:24px;width:90%;max-width:380px;">
                 <h3 style="margin-bottom:16px;">Создать группу</h3>
-                <input type="text" id="groupName" placeholder="Название группы" style="width:100%;padding:12px;margin-bottom:16px;border-radius:12px;border:1px solid var(--border-color);">
-                <button id="createBtn" style="background:var(--accent-color);color:white;border:none;padding:12px;border-radius:12px;width:100%;">Создать</button>
-                <button class="close-modal" id="closeModal" style="margin-top:12px;">Отмена</button>
+                <input type="text" id="groupName" placeholder="Название группы" style="width:100%;padding:12px;margin-bottom:16px;border-radius:12px;border:1px solid #e4e6eb;">
+                <button id="createBtn" style="background:#3390ec;color:white;border:none;padding:12px;border-radius:12px;width:100%;cursor:pointer;">Создать</button>
+                <button id="closeModal" style="margin-top:12px;background:#f0f2f5;border:none;padding:12px;border-radius:12px;width:100%;cursor:pointer;">Отмена</button>
             </div>
         `;
         document.body.appendChild(modal);
@@ -1226,7 +1235,6 @@
         document.getElementById('closeModal').onclick = () => modal.remove();
     }
 
-    // Запуск
     checkAuth();
 </script>
 </body>
