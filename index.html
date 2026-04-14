@@ -438,9 +438,13 @@
     }
 
     async function loadUsers() {
-        const res = await fetch('/api/users');
-        users = await res.json();
-        console.log('Пользователи загружены:', users);
+        try {
+            const res = await fetch('/api/users');
+            users = await res.json();
+            console.log('📋 Загружено пользователей:', users.length);
+        } catch(e) {
+            console.error('Ошибка загрузки пользователей:', e);
+        }
     }
 
     function showLogin() {
@@ -499,7 +503,7 @@
             if (currentChat) renderMessages();
         });
         
-        socket.on('message', (msg) => {
+        socket.on('new_message', (msg) => {
             const exists = messages.some(m => m.id === msg.id);
             if (!exists) {
                 messages.push(msg);
@@ -520,22 +524,25 @@
             }
         });
         
-        // ОБНОВЛЕНИЕ СПИСКА ПОЛЬЗОВАТЕЛЕЙ
+        // Получение списка пользователей
         socket.on('users_list', (list) => {
             users = list;
             updateChatsList();
             updateChatHeader();
-            console.log('Список пользователей обновлён:', users);
+            console.log('📋 Обновлён список пользователей:', users.length);
         });
         
-        // ОБНОВЛЕНИЕ ОНЛАЙН СТАТУСА
-        socket.on('users_online', (onlineIds) => {
-            console.log('Онлайн пользователи:', onlineIds);
-            users.forEach(u => {
-                u.online = onlineIds.includes(u.id);
-            });
-            updateChatsList();
-            updateChatHeader();
+        // Обновление онлайн статуса
+        socket.on('user_online', (data) => {
+            const user = users.find(u => u.id === data.userId);
+            if (user) {
+                user.online = data.online;
+                updateChatsList();
+                if (currentChat && currentChat.id === data.userId) {
+                    updateChatHeader();
+                }
+                console.log(`🟢 ${user.name}: ${data.online ? 'онлайн' : 'офлайн'}`);
+            }
         });
     }
 
@@ -616,7 +623,7 @@
         const otherUsers = users.filter(u => u.id !== currentUser?.id);
         
         if (otherUsers.length === 0) {
-            container.innerHTML = '<div style="padding:20px;color:#6c7883;text-align:center;">Нет других пользователей</div>';
+            container.innerHTML = '<div style="padding:20px;color:#6c7883;text-align:center;">Нет других пользователей<br><br>Пригласите друзей!</div>';
             return;
         }
         
