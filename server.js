@@ -5,27 +5,14 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIO(server);
+const io = socketIO(server, {
+    cors: { origin: "*" }
+});
 
-// Хранилище данных
+// Хранилище
 let users = [];
 let messages = [];
 let onlineUsers = new Map();
-
-// ДЕМО-ПОЛЬЗОВАТЕЛИ (для теста, чтобы было с кем общаться)
-const demoUsers = [
-    { id: 'demo1', phone: '+79001111111', name: 'Анна', avatar: 'https://ui-avatars.com/api/?name=Анна&background=3390ec&color=fff' },
-    { id: 'demo2', phone: '+79002222222', name: 'Дмитрий', avatar: 'https://ui-avatars.com/api/?name=Дмитрий&background=3390ec&color=fff' },
-    { id: 'demo3', phone: '+79003333333', name: 'Елена', avatar: 'https://ui-avatars.com/api/?name=Елена&background=3390ec&color=fff' },
-    { id: 'demo4', phone: '+79004444444', name: 'Максим', avatar: 'https://ui-avatars.com/api/?name=Максим&background=3390ec&color=fff' }
-];
-
-// Добавляем демо-пользователей при запуске
-demoUsers.forEach(demo => {
-    if (!users.find(u => u.id === demo.id)) {
-        users.push(demo);
-    }
-});
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(__dirname));
@@ -34,8 +21,8 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Регистрация/вход
-app.post('/api/login', (req, res) => {
+// Регистрация
+app.post('/api/register', (req, res) => {
     const { phone, name, deviceId } = req.body;
     
     let user = users.find(u => u.phone === phone);
@@ -46,14 +33,12 @@ app.post('/api/login', (req, res) => {
             phone: phone,
             name: name || phone,
             deviceId: deviceId,
-            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name || phone)}&background=3390ec&color=fff`,
-            createdAt: new Date()
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name || phone)}&background=3390ec&color=fff`
         };
         users.push(user);
-        console.log('✅ Новый пользователь:', user.name);
+        console.log('📱 Новый пользователь:', user.name);
     }
     
-    console.log('📱 Всего пользователей:', users.length);
     res.json({ token: user.id, user });
 });
 
@@ -65,33 +50,15 @@ app.post('/api/verify', (req, res) => {
     res.json({ user });
 });
 
-// Получение всех пользователей
+// Список пользователей
 app.get('/api/users', (req, res) => {
-    const userList = users.map(u => ({
+    res.json(users.map(u => ({
         id: u.id,
         phone: u.phone,
         name: u.name,
         avatar: u.avatar,
         online: onlineUsers.has(u.id)
-    }));
-    console.log('📋 Отправляем пользователей:', userList.length);
-    res.json(userList);
-});
-
-// Получение чатов (всех других пользователей)
-app.get('/api/chats', (req, res) => {
-    const userId = req.query.userId;
-    const otherUsers = users.filter(u => u.id !== userId);
-    const chats = otherUsers.map(u => ({
-        id: u.id,
-        type: 'private',
-        name: u.name,
-        avatar: u.avatar,
-        members: [userId, u.id],
-        lastMessage: '',
-        lastMessageTime: Date.now()
-    }));
-    res.json(chats);
+    })));
 });
 
 // WebSocket
@@ -104,46 +71,47 @@ io.on('connection', (socket) => {
         onlineUsers.set(userId, socket.id);
         console.log('👤 Авторизован:', userId);
         
-        // Отправляем историю сообщений
-        socket.emit('chat history', messages);
+        // Отправляем историю
+        socket.emit('history', messages);
         
-        // Рассылаем всем обновлённые списки
-        io.emit('users online', Array.from(onlineUsers.keys()));
-        io.emit('users list', users);
-        io.emit('chats list', users.filter(u => u.id !== userId).map(u => ({
-            id: u.id,
-            name: u.name,
-            avatar: u.avatar
-        })));
+        // Рассылаем обновления
+        io.emit('users_online', Array.from(onlineUsers.keys()));
+        io.emit('users_list', users);
     });
     
-    socket.on('send message', (data) => {
+    socket.on('message', (data) => {
         const user = users.find(u => u.id === currentUserId);
         if (!user) return;
         
         const message = {
             id: Date.now().toString(),
-            chatId: data.chatId,
-            userId: currentUserId,
-            userName: user.name,
-            userAvatar: user.avatar,
-            text: data.text || '',
+            fromId: currentUserId,
+            fromName: user.name,
+            fromAvatar: user.avatar,
+            toId: data.toId,
+            text: data.text,
             image: data.image || null,
-            timestamp: Date.now()
+            time: Date.now()
         };
         
         messages.push(message);
         if (messages.length > 500) messages = messages.slice(-500);
         
-        io.emit('new message', message);
-        console.log('📨 Сообщение отправлено в чат:', data.chatId);
+        // Отправляем получателю
+        const targetSocket = onlineUsers.get(data.toId);
+        if (targetSocket) {
+            io.to(targetSocket).emit('message', message);
+        }
+        
+        // Отправляем отправителю (подтверждение)
+        socket.emit('message_sent', message);
     });
     
     socket.on('disconnect', () => {
         if (currentUserId) {
             onlineUsers.delete(currentUserId);
-            io.emit('users online', Array.from(onlineUsers.keys()));
-            console.log('❌ Пользователь отключился:', currentUserId);
+            io.emit('users_online', Array.from(onlineUsers.keys()));
+            console.log('❌ Отключился:', currentUserId);
         }
     });
 });
@@ -151,13 +119,10 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`
-    ╔════════════════════════════════════════════╗
-    ║     ✅ VANOGRAM ЗАПУЩЕН!                   ║
-    ╠════════════════════════════════════════════╣
-    ║  📱 Откройте: http://localhost:${PORT}      ║
-    ╠════════════════════════════════════════════╣
-    ║  👥 Демо-пользователи:                     ║
-    ║     Анна, Дмитрий, Елена, Максим           ║
-    ╚════════════════════════════════════════════╝
+    ╔════════════════════════════════════╗
+    ║     ✅ VANOGRAM ЗАПУЩЕН!           ║
+    ╠════════════════════════════════════╣
+    ║  📱 Откройте: http://localhost:${PORT}
+    ╚════════════════════════════════════╝
     `);
 });
