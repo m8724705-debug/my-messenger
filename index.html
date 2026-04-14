@@ -18,6 +18,7 @@
             overflow: hidden;
         }
 
+        /* Контейнер */
         .container {
             display: flex;
             height: 100vh;
@@ -25,6 +26,7 @@
             margin: 0 auto;
         }
 
+        /* Список чатов */
         .sidebar {
             width: 320px;
             background: #17212b;
@@ -132,10 +134,7 @@
             font-size: 12px;
         }
 
-        .online-status {
-            color: #2aab6e;
-        }
-
+        /* Основной чат */
         .main-chat {
             flex: 1;
             display: flex;
@@ -170,6 +169,7 @@
             font-size: 12px;
         }
 
+        /* Сообщения */
         .messages-area {
             flex: 1;
             overflow-y: auto;
@@ -241,6 +241,7 @@
             margin-bottom: 4px;
         }
 
+        /* Ввод */
         .input-area {
             background: #17212b;
             padding: 12px 20px;
@@ -295,6 +296,7 @@
             font-size: 20px;
         }
 
+        /* Экран входа */
         .login-screen {
             background: #17212b;
             width: 100%;
@@ -344,6 +346,7 @@
             margin-top: 10px;
         }
 
+        /* Мобильное меню */
         .menu-btn {
             display: none;
         }
@@ -416,6 +419,7 @@
         return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
+    // АВТОРИЗАЦИЯ
     async function checkAuth() {
         if (!token) { showLogin(); return; }
         try {
@@ -438,13 +442,8 @@
     }
 
     async function loadUsers() {
-        try {
-            const res = await fetch('/api/users');
-            users = await res.json();
-            console.log('📋 Загружено пользователей:', users.length);
-        } catch(e) {
-            console.error('Ошибка загрузки пользователей:', e);
-        }
+        const res = await fetch('/api/users');
+        users = await res.json();
     }
 
     function showLogin() {
@@ -490,6 +489,7 @@
         };
     }
 
+    // WEBSOCKET
     function connectSocket() {
         socket = io();
         
@@ -503,11 +503,12 @@
             if (currentChat) renderMessages();
         });
         
-        socket.on('new_message', (msg) => {
+        socket.on('message', (msg) => {
+            // Проверяем, нет ли уже такого сообщения
             const exists = messages.some(m => m.id === msg.id);
             if (!exists) {
                 messages.push(msg);
-                if (currentChat && (msg.fromId === currentChat.id || msg.toId === currentChat.id)) {
+                if (currentChat && msg.fromId === currentChat.id) {
                     renderMessages();
                 }
                 updateChatsList();
@@ -518,34 +519,25 @@
             const exists = messages.some(m => m.id === msg.id);
             if (!exists) {
                 messages.push(msg);
-                if (currentChat && (msg.fromId === currentChat.id || msg.toId === currentChat.id)) {
+                if (currentChat && msg.toId === currentChat.id) {
                     renderMessages();
                 }
             }
         });
         
-        // Получение списка пользователей
         socket.on('users_list', (list) => {
             users = list;
             updateChatsList();
-            updateChatHeader();
-            console.log('📋 Обновлён список пользователей:', users.length);
         });
         
-        // Обновление онлайн статуса
-        socket.on('user_online', (data) => {
-            const user = users.find(u => u.id === data.userId);
-            if (user) {
-                user.online = data.online;
-                updateChatsList();
-                if (currentChat && currentChat.id === data.userId) {
-                    updateChatHeader();
-                }
-                console.log(`🟢 ${user.name}: ${data.online ? 'онлайн' : 'офлайн'}`);
-            }
+        socket.on('users_online', (onlineIds) => {
+            users.forEach(u => u.online = onlineIds.includes(u.id));
+            updateChatsList();
+            updateChatHeader();
         });
     }
 
+    // ОТОБРАЖЕНИЕ
     function showMainApp() {
         renderMainApp();
         updateChatsList();
@@ -623,7 +615,7 @@
         const otherUsers = users.filter(u => u.id !== currentUser?.id);
         
         if (otherUsers.length === 0) {
-            container.innerHTML = '<div style="padding:20px;color:#6c7883;text-align:center;">Нет других пользователей<br><br>Пригласите друзей!</div>';
+            container.innerHTML = '<div style="padding:20px;color:#6c7883;text-align:center;">Нет других пользователей</div>';
             return;
         }
         
@@ -636,9 +628,7 @@
                 <img src="${user.avatar}" class="chat-avatar">
                 <div class="chat-info">
                     <div class="chat-name">${escapeHtml(user.name)}</div>
-                    <div class="chat-status ${user.online ? 'online-status' : ''}">
-                        ${user.online ? '🟢 Онлайн' : '⚫ Не в сети'}
-                    </div>
+                    <div class="chat-status">${user.online ? '🟢 Онлайн' : '⚫ Не в сети'}</div>
                 </div>
             `;
             div.onclick = () => selectChat(user);
@@ -701,14 +691,12 @@
         if (currentChat) {
             const user = users.find(u => u.id === currentChat.id);
             if (user) {
-                const statusEl = document.getElementById('chatStatus');
-                if (statusEl) {
-                    statusEl.innerHTML = user.online ? '<span class="online-dot"></span> Онлайн' : 'Не в сети';
-                }
+                document.getElementById('chatStatus').innerHTML = user.online ? '<span class="online-dot"></span> Онлайн' : 'Не в сети';
             }
         }
     }
 
+    // ОТПРАВКА
     function sendMessage() {
         const input = document.getElementById('messageInput');
         const text = input.value.trim();
