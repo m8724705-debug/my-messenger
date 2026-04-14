@@ -9,10 +9,9 @@ const io = socketIO(server, {
     cors: { origin: "*" }
 });
 
-// Хранилище
 let users = [];
 let messages = [];
-let onlineUsers = new Map();
+let onlineUsers = new Map(); // userId -> socketId
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(__dirname));
@@ -33,7 +32,8 @@ app.post('/api/register', (req, res) => {
             phone: phone,
             name: name || phone,
             deviceId: deviceId,
-            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name || phone)}&background=3390ec&color=fff`
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name || phone)}&background=3390ec&color=fff`,
+            online: false
         };
         users.push(user);
         console.log('📱 Новый пользователь:', user.name);
@@ -52,13 +52,14 @@ app.post('/api/verify', (req, res) => {
 
 // Список пользователей
 app.get('/api/users', (req, res) => {
-    res.json(users.map(u => ({
+    const userList = users.map(u => ({
         id: u.id,
         phone: u.phone,
         name: u.name,
         avatar: u.avatar,
         online: onlineUsers.has(u.id)
-    })));
+    }));
+    res.json(userList);
 });
 
 // WebSocket
@@ -69,14 +70,27 @@ io.on('connection', (socket) => {
     socket.on('auth', (userId) => {
         currentUserId = userId;
         onlineUsers.set(userId, socket.id);
-        console.log('👤 Авторизован:', userId);
         
-        // Отправляем историю
+        // Обновляем статус пользователя
+        const user = users.find(u => u.id === userId);
+        if (user) user.online = true;
+        
+        console.log('👤 Онлайн:', userId);
+        
+        // Отправляем историю сообщений
         socket.emit('history', messages);
         
-        // Рассылаем обновления
-        io.emit('users_online', Array.from(onlineUsers.keys()));
-        io.emit('users_list', users);
+        // Рассылаем ВСЕМ обновлённый список онлайн
+        const onlineList = Array.from(onlineUsers.keys());
+        io.emit('users_online', onlineList);
+        
+        // Рассылаем обновлённый список всех пользователей
+        io.emit('users_list', users.map(u => ({
+            id: u.id,
+            name: u.name,
+            avatar: u.avatar,
+            online: onlineUsers.has(u.id)
+        })));
     });
     
     socket.on('message', (data) => {
@@ -97,10 +111,10 @@ io.on('connection', (socket) => {
         messages.push(message);
         if (messages.length > 500) messages = messages.slice(-500);
         
-        // Отправляем получателю
-        const targetSocket = onlineUsers.get(data.toId);
-        if (targetSocket) {
-            io.to(targetSocket).emit('message', message);
+        // Отправляем получателю (если он онлайн)
+        const targetSocketId = onlineUsers.get(data.toId);
+        if (targetSocketId) {
+            io.to(targetSocketId).emit('message', message);
         }
         
         // Отправляем отправителю (подтверждение)
@@ -110,8 +124,24 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         if (currentUserId) {
             onlineUsers.delete(currentUserId);
-            io.emit('users_online', Array.from(onlineUsers.keys()));
+            
+            // Обновляем статус пользователя
+            const user = users.find(u => u.id === currentUserId);
+            if (user) user.online = false;
+            
             console.log('❌ Отключился:', currentUserId);
+            
+            // Рассылаем ВСЕМ обновлённый список онлайн
+            const onlineList = Array.from(onlineUsers.keys());
+            io.emit('users_online', onlineList);
+            
+            // Рассылаем обновлённый список всех пользователей
+            io.emit('users_list', users.map(u => ({
+                id: u.id,
+                name: u.name,
+                avatar: u.avatar,
+                online: onlineUsers.has(u.id)
+            })));
         }
     });
 });
@@ -119,10 +149,11 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`
-    ╔════════════════════════════════════╗
-    ║     ✅ VANOGRAM ЗАПУЩЕН!           ║
-    ╠════════════════════════════════════╣
-    ║  📱 Откройте: http://localhost:${PORT}
-    ╚════════════════════════════════════╝
+    ╔════════════════════════════════════════════╗
+    ║     ✅ VANOGRAM ЗАПУЩЕН!                   ║
+    ╠════════════════════════════════════════════╣
+    ║  📱 Откройте: http://localhost:${PORT}      ║
+    ║  🟢 Онлайн статус работает!                ║
+    ╚════════════════════════════════════════════╝
     `);
 });
