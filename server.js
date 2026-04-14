@@ -36,7 +36,7 @@ app.post('/api/register', (req, res) => {
             avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name || phone)}&background=3390ec&color=fff`
         };
         users.push(user);
-        console.log('✅ Новый пользователь:', user.name);
+        console.log('📱 Новый пользователь:', user.name);
     }
     
     res.json({ token: user.id, user });
@@ -50,16 +50,15 @@ app.post('/api/verify', (req, res) => {
     res.json({ user });
 });
 
-// Список всех пользователей
+// Список пользователей
 app.get('/api/users', (req, res) => {
-    const userList = users.map(u => ({
+    res.json(users.map(u => ({
         id: u.id,
         phone: u.phone,
         name: u.name,
         avatar: u.avatar,
         online: onlineUsers.has(u.id)
-    }));
-    res.json(userList);
+    })));
 });
 
 // WebSocket
@@ -70,25 +69,16 @@ io.on('connection', (socket) => {
     socket.on('auth', (userId) => {
         currentUserId = userId;
         onlineUsers.set(userId, socket.id);
-        console.log('👤 Пользователь онлайн:', userId);
+        console.log('👤 Авторизован:', userId);
         
-        // Отправляем историю сообщений
+        // Отправляем историю
         socket.emit('history', messages);
         
-        // Отправляем список всех пользователей
-        const allUsers = users.map(u => ({
-            id: u.id,
-            name: u.name,
-            avatar: u.avatar,
-            online: onlineUsers.has(u.id)
-        }));
-        socket.emit('users_list', allUsers);
-        
-        // Уведомляем всех об обновлении онлайн статуса
-        io.emit('user_online', { userId: userId, online: true });
+        // Рассылаем обновления
+        io.emit('users_online', Array.from(onlineUsers.keys()));
+        io.emit('users_list', users);
     });
     
-    // Отправка сообщения
     socket.on('message', (data) => {
         const user = users.find(u => u.id === currentUserId);
         if (!user) return;
@@ -110,30 +100,18 @@ io.on('connection', (socket) => {
         // Отправляем получателю
         const targetSocket = onlineUsers.get(data.toId);
         if (targetSocket) {
-            io.to(targetSocket).emit('new_message', message);
+            io.to(targetSocket).emit('message', message);
         }
         
-        // Подтверждение отправителю
+        // Отправляем отправителю (подтверждение)
         socket.emit('message_sent', message);
     });
     
-    // Отключение
     socket.on('disconnect', () => {
         if (currentUserId) {
             onlineUsers.delete(currentUserId);
-            console.log('❌ Пользователь отключился:', currentUserId);
-            
-            // Уведомляем всех об обновлении онлайн статуса
-            io.emit('user_online', { userId: currentUserId, online: false });
-            
-            // Обновляем список пользователей
-            const allUsers = users.map(u => ({
-                id: u.id,
-                name: u.name,
-                avatar: u.avatar,
-                online: onlineUsers.has(u.id)
-            }));
-            io.emit('users_list', allUsers);
+            io.emit('users_online', Array.from(onlineUsers.keys()));
+            console.log('❌ Отключился:', currentUserId);
         }
     });
 });
@@ -141,10 +119,10 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`
-    ╔════════════════════════════════════════════╗
-    ║     ✅ VANOGRAM ЗАПУЩЕН!                   ║
-    ╠════════════════════════════════════════════╣
-    ║  📱 Откройте: http://localhost:${PORT}      ║
-    ╚════════════════════════════════════════════╝
+    ╔════════════════════════════════════╗
+    ║     ✅ VANOGRAM ЗАПУЩЕН!           ║
+    ╠════════════════════════════════════╣
+    ║  📱 Откройте: http://localhost:${PORT}
+    ╚════════════════════════════════════╝
     `);
 });
