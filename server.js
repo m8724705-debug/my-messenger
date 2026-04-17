@@ -5,124 +5,145 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIO(server, {
-    cors: { origin: "*" }
-});
+const io = socketIO(server);
 
-// Хранилище
+// Хранилище данных (в реальном проекте используй базу данных)
 let users = [];
 let messages = [];
-let onlineUsers = new Map();
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(__dirname));
+
+// ========== API для Android приложения ==========
+
+// Регистрация пользователя
+app.post('/api/register', (req, res) => {
+    const { userId, name } = req.body;
+    
+    let user = users.find(u => u.userId === userId);
+    
+    if (!user) {
+        user = {
+            userId: userId,
+            name: name,
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=3390ec&color=fff`,
+            online: true,
+            lastSeen: Date.now()
+        };
+        users.push(user);
+        console.log('✅ Новый пользователь:', name);
+    }
+    
+    res.json({ success: true, user: user });
+});
+
+// Получение всех сообщений
+app.get('/api/messages', (req, res) => {
+    // Сортируем по времени (старые сначала)
+    const sortedMessages = [...messages].sort((a, b) => a.time - b.time);
+    res.json(sortedMessages);
+});
+
+// Отправка сообщения
+app.post('/api/send', (req, res) => {
+    const { userId, userName, text } = req.body;
+    
+    if (!userId || !text) {
+        return res.status(400).json({ error: 'Не хватает данных' });
+    }
+    
+    const message = {
+        id: Date.now().toString(),
+        fromId: userId,
+        fromName: userName || 'Пользователь',
+        text: text,
+        time: Date.now(),
+        isSystem: false
+    };
+    
+    messages.push(message);
+    
+    // Ограничиваем количество сообщений (последние 500)
+    if (messages.length > 500) {
+        messages = messages.slice(-500);
+    }
+    
+    // Отправляем через WebSocket всем подключённым клиентам
+    io.emit('new_message', message);
+    
+    res.json({ success: true, message: message });
+});
+
+// Получение списка пользователей
+app.get('/api/users', (req, res) => {
+    res.json(users);
+});
+
+// ========== Веб-интерфейс ==========
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Регистрация
-app.post('/api/register', (req, res) => {
-    const { phone, name, deviceId } = req.body;
-    
-    let user = users.find(u => u.phone === phone);
-    
-    if (!user) {
-        user = {
-            id: Date.now().toString(),
-            phone: phone,
-            name: name || phone,
-            deviceId: deviceId,
-            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name || phone)}&background=3390ec&color=fff`
-        };
-        users.push(user);
-        console.log('📱 Новый пользователь:', user.name);
-    }
-    
-    res.json({ token: user.id, user });
-});
+// ========== WebSocket для реального времени ==========
 
-// Проверка токена
-app.post('/api/verify', (req, res) => {
-    const { token } = req.body;
-    const user = users.find(u => u.id === token);
-    if (!user) return res.status(401).json({ error: 'Не авторизован' });
-    res.json({ user });
-});
-
-// Список пользователей
-app.get('/api/users', (req, res) => {
-    res.json(users.map(u => ({
-        id: u.id,
-        phone: u.phone,
-        name: u.name,
-        avatar: u.avatar,
-        online: onlineUsers.has(u.id)
-    })));
-});
-
-// WebSocket
 io.on('connection', (socket) => {
     console.log('🔌 Клиент подключился');
     let currentUserId = null;
     
-    socket.on('auth', (userId) => {
-        currentUserId = userId;
-        onlineUsers.set(userId, socket.id);
-        console.log('👤 Авторизован:', userId);
+    socket.on('auth', (data) => {
+        currentUserId = data.userId;
+        console.log('👤 Авторизован:', currentUserId);
         
-        // Отправляем историю
-        socket.emit('history', messages);
+        // Отправляем историю сообщений
+        socket.emit('chat history', messages);
         
-        // Рассылаем обновления
-        io.emit('users_online', Array.from(onlineUsers.keys()));
-        io.emit('users_list', users);
+        // Отправляем список пользователей
+        socket.emit('users list', users);
     });
     
-    socket.on('message', (data) => {
-        const user = users.find(u => u.id === currentUserId);
+    socket.on('send message', (data) => {
+        const user = users.find(u => u.userId === currentUserId);
         if (!user) return;
         
         const message = {
             id: Date.now().toString(),
             fromId: currentUserId,
             fromName: user.name,
-            fromAvatar: user.avatar,
-            toId: data.toId,
             text: data.text,
-            image: data.image || null,
-            time: Date.now()
+            time: Date.now(),
+            isSystem: false
         };
         
         messages.push(message);
         if (messages.length > 500) messages = messages.slice(-500);
         
-        // Отправляем получателю
-        const targetSocket = onlineUsers.get(data.toId);
-        if (targetSocket) {
-            io.to(targetSocket).emit('message', message);
-        }
-        
-        // Отправляем отправителю (подтверждение)
-        socket.emit('message_sent', message);
+        io.emit('new message', message);
+        console.log('📨 Сообщение от', user.name);
     });
     
     socket.on('disconnect', () => {
         if (currentUserId) {
-            onlineUsers.delete(currentUserId);
-            io.emit('users_online', Array.from(onlineUsers.keys()));
             console.log('❌ Отключился:', currentUserId);
         }
     });
 });
 
+// Запуск сервера
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`
-    ╔════════════════════════════════════╗
-    ║     ✅ VANOGRAM ЗАПУЩЕН!           ║
-    ╠════════════════════════════════════╣
-    ║  📱 Откройте: http://localhost:${PORT}
-    ╚════════════════════════════════════╝
+    ╔════════════════════════════════════════════════════╗
+    ║     ✅ VANOGRAM СЕРВЕР ЗАПУЩЕН!                    ║
+    ╠════════════════════════════════════════════════════╣
+    ║  📱 API доступно по адресу:                        ║
+    ║     https://vanogramess.onrender.com               ║
+    ╠════════════════════════════════════════════════════╣
+    ║  🔧 Эндпоинты:                                     ║
+    ║     POST /api/register  - регистрация              ║
+    ║     GET  /api/messages  - получить сообщения       ║
+    ║     POST /api/send      - отправить сообщение      ║
+    ║     GET  /api/users     - список пользователей     ║
+    ╚════════════════════════════════════════════════════╝
     `);
 });
